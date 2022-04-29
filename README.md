@@ -10,7 +10,7 @@ conda env create -f environments.yaml
 ## Usage:  
 
 ### Feature extraction
-Data set can be downloaded at URL.(Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
+Data set (2.8GB) can be downloaded at <https://drive.google.com/uc?export=download&id=1paCO5dzxdVXgq49S5NkGkYQw_UaumE8a>.(Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
 1.  For flow level feature extraction, in pcap_process packet, python files should be executed in following order:
     - pcap2csv.py
     - csv_process.py
