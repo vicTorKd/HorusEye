@@ -19,8 +19,8 @@ Partial data set(used in the demo code) can be downloaded at <https://drive.goog
 
 
 ### Training and testing
-1.  control_plane.py is main program, where you can change your hyper-parameter and train and test the framework.  
-2.  iForest_detect.py is Gulliver Tunnel module which achives traffic offloading using isolation forest. Also you can change the hyper-parameter for iForest.  
-3.  load_data.py is called by control_plane.py to load data from file.  
-4.  convert_model.py is model quantization module, which can convert the trained model in pytorch into tensorRT engine. (GPU is required)
+- control_plane.py is main program, where you can change your hyper-parameter and train and test the framework.  
+- iForest_detect.py is Gulliver Tunnel module which achives traffic offloading using isolation forest. Also you can change the hyper-parameter for iForest.  
+- load_data.py is called by control_plane.py to load data from file.  
+- convert_model.py is model quantization module, which can convert the trained model in pytorch into tensorRT engine. (GPU is required)
 
