@@ -24,9 +24,9 @@ def render_csv_row(timeInfo, pkt_sc, fh_csv):
     scapy's RawPcapReader
     fh_csv is the csv file handle
     """
-    ans_list = [0 for i in range(15)]
+    ans_list = [0 for i in range(17)]
     # Each line of the CSV has this format
-    fmt = '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}|{13}|{14}'
+    fmt = '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}|{13}|{14}|{15}|{16}'
     # timestamp
     ans_list[0] = timeInfo.sec
     if ISIP:
@@ -38,12 +38,17 @@ def render_csv_row(timeInfo, pkt_sc, fh_csv):
         if ether_pkt_sc is None:
             return False
         # eth_src = ether_pkt_sc.src
+        # print('has IP: ', ether_pkt_sc.haslayer('IP'))
+        # print('has UDP: ', ether_pkt_sc.haslayer('UDP'))
         if not ether_pkt_sc.haslayer('IP'):
             print(fmt.format(*ans_list),file=fh_csv)
             return True
         else:
             ip_pkt_sc = ether_pkt_sc[IP]
 
+    # src & dst MAC
+    ans_list[15] = ether_pkt_sc.src
+    ans_list[16] = ether_pkt_sc.dst
     # srcIP
     ans_list[1] = ip_pkt_sc.src
     # dstIP
@@ -56,7 +61,7 @@ def render_csv_row(timeInfo, pkt_sc, fh_csv):
 
     ans_list[5] = pkt_sc[9 + eth_length]
     # len
-    ans_list[-1] = ip_pkt_sc.len
+    ans_list[14] = ip_pkt_sc.len
     # ip_ihl
     ans_list[6] = ip_pkt_sc.ihl
     # ip_tos
@@ -70,17 +75,17 @@ def render_csv_row(timeInfo, pkt_sc, fh_csv):
         ans_list[2] = udp_pkt_sc.sport
         ans_list[4] = udp_pkt_sc.dport
         # udp_len
-        ans_list[-2] = udp_pkt_sc.len
+        ans_list[13] = udp_pkt_sc.len
     elif ip_pkt_sc.haslayer('TCP'):
         tcp_pkt_sc = ip_pkt_sc[TCP]
         ans_list[2] = tcp_pkt_sc.sport
         ans_list[4] = tcp_pkt_sc.dport
         # tcp_window
-        ans_list[-3] = tcp_pkt_sc.window
+        ans_list[12] = tcp_pkt_sc.window
         # tcp_flag
-        ans_list[-4] = pkt_sc[33 + eth_length]
+        ans_list[11] = pkt_sc[33 + eth_length]
         # tco_dataofs
-        ans_list[-5] = tcp_pkt_sc.dataofs
+        ans_list[10] = tcp_pkt_sc.dataofs
     print(fmt.format(*ans_list),file=fh_csv)
     return True
     #--------------------------------------------------
@@ -139,12 +144,16 @@ def file_name_walk(file_dir):
 
 def open_source_data_process():
     print('main')
-    file_list = file_name_walk('../DataSets/open-source/pcap')
-    save_root = '../DataSets/open-source/normal-packet-level-device'
+    file_list = file_name_walk('../DataSets/Open-Source/Normal')
+    save_root = '../DataSets/Open-Source/normal-packet-level-device'
+    # file_list = file_name_walk('../DataSets/Open-Source/Anomaly')
+    # save_root = '../DataSets/Open-Source/attack-packet-level-device'
     if not os.path.exists(save_root):
         os.makedirs(save_root)
     file_list.sort()
     for i, file_name in enumerate(file_list):
+        # if i != 10:
+        #     continue
         # try:
         print(file_name)
         if i < 10:  # for file sort, because '.' > {0-9}
@@ -160,12 +169,17 @@ def open_source_data_process():
 
 def main():
     """Program main entry"""
+    # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']
+    normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+    #normal_list=['IoT attack']
     for type_index, type_name in enumerate(normal_list):
-        #file_list = file_name_walk('../DataSets/attack/pcap/{:}'.format(type_name))
-        #save_root = '../DataSets/attack/attack-packet-level-device/{}'.format(type_name)
-        file_list = file_name_walk('../DataSets/our/pcap/{:}'.format(type_name))
-        save_root = '../DataSets/our/normal-packet-level-device/{}'.format(type_name)
+        # file_list = file_name_walk('../DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
+        # save_root = '../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name)
+        # file_list = file_name_walk('../DataSets/Normal/data/{:}'.format(type_name))
+        # save_root = '../DataSets/normal-packet-level-device/{}'.format(type_name)
+        file_list = file_name_walk('../NewDataSets/Normal/data/{:}'.format(type_name))
+        save_root = '../NewDataSets/normal-packet-level-device/{}'.format(type_name)
         if not os.path.exists(save_root):
             os.makedirs(save_root)
         file_list.sort()
@@ -180,5 +194,5 @@ def main():
 #--------------------------------------------------
 
 if __name__ == '__main__':
-    # main()
-    open_source_data_process()
+    main()
+    # open_source_data_process()
