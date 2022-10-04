@@ -6,11 +6,13 @@ the anomalies considered by Gulliver Tunnel to reduce the false-positive rate. I
 
 ## Install
 ### Environments install
-conda env create -f environments.yaml
+conda env create -f iot.yaml
 ## Usage:  
 
 ### Feature extraction
-Partial data set(used in the demo code) can be downloaded at <https://drive.google.com/uc?export=download&id=1paCO5dzxdVXgq49S5NkGkYQw_UaumE8a>.(Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
+Partial data set(used in the demo code) can be downloaded at    
+<https://drive.google.com/uc?export=download&id=1paCO5dzxdVXgq49S5NkGkYQw_UaumE8a>.   
+(Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order:
     - pcap2csv.py
     - csv_process.py
