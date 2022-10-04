@@ -1,11 +1,14 @@
-#!/usr/bin/env python
+#!/home/wkd/anaconda3/envs/iot/bin python
 # -*- coding: utf-8 -*-
 # @Time    : 2022/01/18 11:17
 # @Author  : Kaidong Wu
 # @Site    :
-# @File    : convert_model.py
+# @File    : convert_test.py
 # @Software: PyCharm
+
+from re import T
 import torch
+import torch.utils.data as Data
 from sklearn import preprocessing
 from volksdep.calibrators import EntropyCalibrator2
 from volksdep.converters import load
@@ -14,7 +17,7 @@ from volksdep.converters import torch2trt
 from volksdep.datasets import CustomDataset
 
 from load_data import *
-from model import CNN_AE
+from model import CNN_SAM_MLP_AE1, CNN_SAM_MLP_AE2, CNN_SAM_MLP_AE3, CNN_AE
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -39,7 +42,7 @@ setup_seed(20)
 def excute_RMSE(input, target):
     mse = (input - target).pow(2).sum(2) / INPUT_SIZE
     rmse = torch.sqrt(mse)
-    return rmse.detach().cpu().numpy().reshape(-1)
+    return rmse.detach().cpu().numpy().reshape(-1)  # 0 :error 1:normal
 
 
 def calibration_data_processing(data, data_num=100):
@@ -49,7 +52,8 @@ def calibration_data_processing(data, data_num=100):
     data = data[:data_num, ]
     data = scaler.fit_transform(data)
     data = data[:, np.newaxis, :]
-    data = torch.tensor(data)
+    data = torch.tensor(data, dtype=torch.float32)
+    print(data.dtype)
     return data
 
 
@@ -87,23 +91,24 @@ def test_throughput(test_model, BATCH_SIZE, X):
 
 
 if __name__ == "__main__":
-    # model_save_path = './params/AE_MLP_model.pkl'
     model_save_path = './params/CNN_DW_dilation.pkl'
     tensorrt_save_path = './params/tensorrt_fp16_CNN_DW_dilation.engine'
     onnx_save_path = './params/onnx_model.onnx'
 
     # Hyper parameters
     CONVERT = True
-    BATCH_SIZE = 30000  # for fp32/fp16 mode
-    # BATCH_SIZE = 8000  # for int8 trt mode
+    # BATCH_SIZE = 40000  # for fp32/fp16 mode
+    BATCH_SIZE = 8600  # for int8 trt mode
     INPUT_SIZE = 100
-    CALIBRATION_SIZE = 20
+    CALIBRATION_SIZE = 4000000
     CHANNEL_SIZE = 1
     torch.cuda.set_device(0)
     dummy_input = torch.ones(BATCH_SIZE, CHANNEL_SIZE, INPUT_SIZE).cuda()
-    device_list = ['philips_camera', '360_camera', 'ezviz_camera', 'hichip_battery_camera', 'mercury_wirecamera',
+    device_list_camera = ['philips_camera', '360_camera', 'ezviz_camera', 'hichip_battery_camera', 'mercury_wirecamera',
                    'skyworth_camera', 'tplink_camera',
-                   'xiaomi_camera']
+                   'xiaomi_camera']  # ,'360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
+                                     # 'skyworth_camera','tplink_camera','xiaomi_camera'
+    device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway']
 
     if CONVERT:
         model = CNN_AE(input_size=INPUT_SIZE)
@@ -116,47 +121,49 @@ if __name__ == "__main__":
         # build trt model and provided calibration data using EntropyCalibrator2
 
         # create calibrator
-        df_normal_train = load_iot_data_seq(device_list=device_list, begin=0, end=1)
-        tensor_calibration = calibration_data_processing(df_normal_train, CALIBRATION_SIZE)
-        dummy_calibrator = EntropyCalibrator2(CustomDataset(tensor_calibration), batch_size=1)
+        df_normal_train = load_iot_data_seq(device_list=device_list_camera, begin=0, end=4)
+        df_normal_train = df_normal_train.append(load_iot_data_seq(device_list=device_list_gateway, begin=0, end=4))
+        df_data = df_normal_train
+        tensor_calibration = calibration_data_processing(df_data, len(df_data))
+        int8_calibrator = EntropyCalibrator2(CustomDataset(tensor_calibration), batch_size=int(len(df_data)))
 
         # build trt model
         print("model converting...")
         trt_model = torch2trt(
             model=model,  # model (torch.nn.Module): PyTorch model.
             dummy_input=dummy_input,  # dummy_input (torch.Tensor, tuple or list): dummy input.
-            log_level='ERROR',  # log_level (string, default is ERROR): TensorRT logger level,
-            # INTERNAL_ERROR, ERROR, WARNING, INFO, VERBOSE are support.
+            log_level='INFO',  # log_level (string, default is ERROR): TensorRT logger level,
+                                # INTERNAL_ERROR, ERROR, WARNING, INFO, VERBOSE are support.
             max_batch_size=BATCH_SIZE,  # max_batch_size (int, default=1): The maximum batch size which can be
-            # used at execution time, and also the batch size for which the
-            # ICudaEngine will be optimized.
+                                        # used at execution time, and also the batch size for which the
+                                        # ICudaEngine will be optimized.
             min_input_shapes=None,  # min_input_shapes (list, default is None): Minimum input shapes, should
-            # be provided when shape is dynamic. For example, [(3, 224, 224)] is
-            # for only one input.
+                                    # be provided when shape is dynamic. For example, [(3, 224, 224)] is
+                                    # for only one input.
             max_input_shapes=None,  # max_input_shapes (list, default is None): Maximum input shapes, should
-            # be provided when shape is dynamic. For example, [(3, 224, 224)] is
-            # for only one input.
-            max_workspace_size=5,  # max_workspace_size (int, default is 1): The maximum GPU temporary
-            # memory which the ICudaEngine can use at execution time. default is 1GB.
-            fp16_mode=True,  # fp16_mode (bool, default is False): Whether or not 16-bit kernels are
-            # permitted. During engine build fp16 kernels will also be tried when
-            # this mode is enabled.
+                                    # be provided when shape is dynamic. For example, [(3, 224, 224)] is
+                                    # for only one input.
+            max_workspace_size=8,  # max_workspace_size (int, default is 1): The maximum GPU temporary
+                                   # memory which the ICudaEngine can use at execution time. default is 1GB.
+            fp16_mode=False,  # fp16_mode (bool, default is False): Whether or not 16-bit kernels are
+                              # permitted. During engine build fp16 kernels will also be tried when
+                              # this mode is enabled.
             strict_type_constraints=False,  # strict_type_constraints (bool, default is False): When strict type
-            # constraints is set, TensorRT will choose the type constraints that
-            # conforms to type constraints. If the flag is not enabled higher
-            # precision implementation may be chosen if it results in higher
-            # performance.
-            int8_mode=False,  # int8_mode (bool, default is False): Whether Int8 mode is used.
-            int8_calibrator=None,  # int8_calibrator (volksdep.calibrators.base.BaseCalibrator, default is
-            # None): calibrator for int8 mode, if None, default calibrator will
-            # be used as calibration data.
+                                            # constraints is set, TensorRT will choose the type constraints that
+                                            # conforms to type constraints. If the flag is not enabled higher
+                                            # precision implementation may be chosen if it results in higher
+                                            # performance.
+            int8_mode=True,  # int8_mode (bool, default is False): Whether Int8 mode is used.
+            int8_calibrator=int8_calibrator,  # int8_calibrator (volksdep.calibrators.base.BaseCalibrator, default is
+                                   # None): calibrator for int8 mode, if None, default calibrator will
+                                   # be used as calibration data.
             opset_version=9,  # opset_version (int, default is 9): Onnx opset version.
             do_constant_folding=True,  # do_constant_folding (bool, default False): If True, the
-            # constant-folding optimization is applied to the model during
-            # export. Constant-folding optimization will replace some ops
-            # that have all constant inputs, with pre-computed constant nodes.
+                                       # constant-folding optimization is applied to the model during
+                                       # export. Constant-folding optimization will replace some ops
+                                       # that have all constant inputs, with pre-computed constant nodes.
             verbose=True)  # verbose (bool, default False): if specified, we will print out a debug
-        # description of the trace being exported.
+                           # description of the trace being exported.
         print("model converted successfully")
         # save tensorrt engine
         save(trt_model, tensorrt_save_path)
@@ -165,21 +172,13 @@ if __name__ == "__main__":
         trt_model = load(tensorrt_save_path)
 
         # execute inference
-        # with torch.no_grad():
-        #     trt_output = trt_model(dummy_input)
-        #     print(trt_output.shape[0])
-
-        # test model complexity
-        # with torch.no_grad():
-        #     trt_model.eval()
-        #     input = torch.randn(1, 1, INPUT_SIZE)
-        #     macs, params = profile(trt_model, inputs=(input,))
-        #     macs, params = clever_format([macs, params], "%.3f")
-        #     print("the Params(M) is {:}  the MACs(G) is {:}".format(params, macs))
+        with torch.no_grad():
+            trt_output = trt_model(dummy_input)
+            print(trt_output.shape[0])
 
         # test throughput
         df_attack = load_iot_attack_seq('all')
-        df_normal_test_con = load_iot_data_seq(device_list=device_list, begin=4, end=6)
+        df_normal_test_con = load_iot_data_seq(device_list=device_list_camera, begin=4, end=6)
         df_test_con = df_normal_test_con.append(df_attack)
         test_X, test_y = test_data_processing(df_test_con)
         test_throughput(trt_model, BATCH_SIZE, test_X)
