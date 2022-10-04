@@ -11,7 +11,7 @@ conda env create -f iot.yaml
 
 ### Feature extraction
 Partial data set(used in the demo code) can be downloaded at    
-<https://drive.google.com/uc?export=download&id=1paCO5dzxdVXgq49S5NkGkYQw_UaumE8a>.   
+<https://drive.google.com/u/0/uc?id=16JFRl3XEPSDnZdgAeMtQ1NZ2x5u91aeO&export=download>.   
 (Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order:
     - pcap2csv.py
