@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/11/30 下午5:01
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : AE.py
-# @Software: PyCharm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
