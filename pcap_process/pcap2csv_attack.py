@@ -132,9 +132,6 @@ def pcap2csv(in_pcap, out_csv):
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
-        # print("root", root)  # 当前目录路径
-        # print("dirs", dirs)  # 当前路径下所有子目录
-        # print("files", files)  # 当前路径下所有非目录子文件
         for file in files:
             if os.path.splitext(file)[1] == ".pcap":
                 file_list.append("{}/{}".format(root, file))
