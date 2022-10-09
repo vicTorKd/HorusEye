@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/11/25 下午2:41
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : FE.py
-# @Software: PyCharm
-# this FE is cited by Kitsune.
-
 # Check if cython code has been compiled
 import os
 import subprocess
@@ -194,7 +185,7 @@ class FE:
         ### Extract Features
         try:
             # print(str([srcIP, srcport, proto]))
-            h1 = hashlib.md5(str([srcIP, srcport, proto]).encode('utf-8'))  # 括号内也可以传值，类型也要求是bytes类型
+            h1 = hashlib.md5(str([srcIP, srcport, proto]).encode('utf-8'))
             h2 = hashlib.md5(str([dstIP, dstport, proto]).encode('utf-8'))
             hash_sum = int.from_bytes(h1.digest(), byteorder='big') + int.from_bytes(h2.digest(), byteorder='big')
             return np.append(np.array(hash_sum),
@@ -269,9 +260,7 @@ def open_source_data_process():
 if __name__ == '__main__':
     packet_limit = np.Inf  # the number of packets to process
 
-    #normal_list=['mirai']
     normal_list = os.listdir('./DataSets/Attack_iot_filter/Pcap/')
-    #normal_list = ['philips_camera']
     #normal_list = ['ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
     for type_index, type_name in enumerate(normal_list):
         file_list = file_name_walk('./DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
