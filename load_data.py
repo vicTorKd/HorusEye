@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/7/13 下午5:27
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : load_data.py
-# @Software: PyCharm
-# encoding: utf-8
-
 import random
 import numpy as np
 import pandas as pd
