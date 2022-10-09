@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/11/25 下午2:48
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : netStat.py
-# @Software: PyCharm
-
 import numpy as np
 ## Prep AfterImage cython package
 import os
