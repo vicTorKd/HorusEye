@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/11/25 下午2:50
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : AfterImage.py
-# @Software: PyCharm
 import math
 import numpy as np
 
