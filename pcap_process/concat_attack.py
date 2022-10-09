@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
-@File    :   concat_attack.py
-@Time    :   2021/07/10 15:30:24
-@Author  :   Guanglin Duan 
-@Version :   1.0
-'''
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report,confusion_matrix
 import pandas as pd
@@ -20,9 +11,9 @@ data_set = ["caida-A", "univ1", "IoT", "wide"]
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
-        # print("root", root)  # 当前目录路径
-        # print("dirs", dirs)  # 当前路径下所有子目录
-        # print("files", files)  # 当前路径下所有非目录子文件
+        # print("root", root)
+        # print("dirs", dirs)
+        # print("files", files)
         for file in files:
             if os.path.splitext(file)[1] == ".csv":
                 file_list.append("{}/{}".format(root, file))
@@ -46,13 +37,13 @@ def process(dec_fileName, bin_fileName, save_fileName):
     df_concat.to_csv(save_fileName, index=False)
 
 def main():
-    save_dir = "/home/dyt/IForest_IoT/DataSets/normal-concat-feature"
+    save_dir = "../DataSets/normal-concat-feature"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    dec_file_list = file_name_walk('/home/dyt/IForest_IoT/DataSets/normal-dec-feature')
+    dec_file_list = file_name_walk('../DataSets/normal-dec-feature')
     for i, dec_file in enumerate(dec_file_list):
-        bin_file = "/home/dyt/IForest_IoT/DataSets/normal-bin-feature/{}.csv".format(i)
-        save_path = "/home/dyt/IForest_IoT/DataSets/normal-concat-feature/{}.csv".format(i)
+        bin_file = "../DataSets/normal-bin-feature/{}.csv".format(i)
+        save_path = "../DataSets/normal-concat-feature/{}.csv".format(i)
         process(dec_file, bin_file, save_path)
         print("finish: {}/{}".format(i, len(dec_file_list)))
 
