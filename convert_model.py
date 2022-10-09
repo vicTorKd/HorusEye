@@ -1,11 +1,3 @@
-#!/home/wkd/anaconda3/envs/iot/bin python
-# -*- coding: utf-8 -*-
-# @Time    : 2022/01/18 11:17
-# @Author  : Kaidong Wu
-# @Site    :
-# @File    : convert_test.py
-# @Software: PyCharm
-
 from re import T
 import torch
 import torch.utils.data as Data
