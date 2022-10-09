@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/8/30 上午9:37
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : extract_flow_size.py
-# @Software: PyCharm
-
 import pandas as pd
 import os
 import numpy as np
@@ -165,22 +157,22 @@ def extract_flow_size(in_csv, out_csv,thr_time,manul_TCP_cut):
             key=str(df[["srcIP", "srcPort", "dstIP", "dstPort", "protocol"]].iloc[i].tolist())
             value=real_pack_len_sum[key]
             if (len(value)!=0):
-                pack_len_sum=pack_len_sum.append(pd.DataFrame({'5-tuple':key,'sum_len':value[1],'udp_tcp':1},index=[0]))#输出结果
+                pack_len_sum=pack_len_sum.append(pd.DataFrame({'5-tuple':key,'sum_len':value[1],'udp_tcp':1},index=[0]))
             del real_pack_len_sum[key]
             continue
          #   print('error')
-        if((cur_time-old_time)>thr_time):#大于时间阈值,执行统计操作
+        if((cur_time-old_time)>thr_time):
             old_time=cur_time
             iter_keys=real_pack_len_sum.keys()
             for key in list(iter_keys):
                 value=real_pack_len_sum[key]
-                #if((cur_time-value[0])>thr_interval):#该流的上下报文时间间隔超过阈值
-                if value[2] == 0:#如果是UDP流则统计时间窗口内的流大小。
-                    pack_len_sum=pack_len_sum.append(pd.DataFrame({'5-tuple':key,'sum_len':value[1],'udp_tcp':value[2]},index=[0]))#输出结果
-                    del real_pack_len_sum[key]#释放寄存器
+                
+                if value[2] == 0:
+                    pack_len_sum=pack_len_sum.append(pd.DataFrame({'5-tuple':key,'sum_len':value[1],'udp_tcp':value[2]},index=[0]))
+                    del real_pack_len_sum[key]
                     #print('1')
                     #print(pack_len_sum)
-        #进行5-tuple hash
+        
         key=str(df[["srcIP", "srcPort", "dstIP", "dstPort", "protocol"]].iloc[i].tolist())
         temp_pack=real_pack_len_sum[key]
         if (len(temp_pack)==0):
@@ -196,21 +188,18 @@ def extract_flow_size(in_csv, out_csv,thr_time,manul_TCP_cut):
         #if (i%1000==0):
             #print('finish {:}'.format(i))
     iter_keys = real_pack_len_sum.keys()
-    if manul_TCP_cut:  # 手动终止所有TCP流，部分异常pcap文件没有FIN RST结束符。
+    if manul_TCP_cut:
         for key in list(iter_keys):
             value = real_pack_len_sum[key]
             if value[2] == 1:
                 pack_len_sum = pack_len_sum.append(
-                    pd.DataFrame({'5-tuple': key, 'sum_len': value[1], 'udp_tcp': value[2]}, index=[0]))  # 输出结果
-                del real_pack_len_sum[key]  # 释放寄存器
+                    pd.DataFrame({'5-tuple': key, 'sum_len': value[1], 'udp_tcp': value[2]}, index=[0]))
+                del real_pack_len_sum[key]
     print('finish the file {:}'.format(in_csv))
     pack_len_sum.to_csv(out_csv)
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
-        # print("root", root)  # 当前目录路径
-        # print("dirs", dirs)  # 当前路径下所有子目录
-        # print("files", files)  # 当前路径下所有非目录子文件
         for file in files:
             if os.path.splitext(file)[1] == ".csv":
                 file_list.append("{}/{}".format(root, file))
