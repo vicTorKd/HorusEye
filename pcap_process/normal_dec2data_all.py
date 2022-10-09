@@ -1,19 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/7/14 下午3:15
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : normal_dec2data_all.py
-# @Software: PyCharm
 import pandas as pd
 import os
 import numpy as np
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
-        # print("root", root)  # 当前目录路径
-        # print("dirs", dirs)  # 当前路径下所有子目录
-        # print("files", files)  # 当前路径下所有非目录子文件
         for file in files:
             if os.path.splitext(file)[1] == ".csv":
                 file_list.append("{}/{}".format(root, file))
@@ -21,7 +11,7 @@ def file_name_walk(file_dir):
 
 def main():
     df_normal = pd.DataFrame()
-    normal_path = '/home/dyt/IForest_IoT/DataSets/normal-dec-feature/'
+    normal_path = '../DataSets/normal-dec-feature/'
     # load attack
     file_list = file_name_walk(normal_path)
     total_len=len(file_list)
