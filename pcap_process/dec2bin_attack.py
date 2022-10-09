@@ -13,9 +13,9 @@ normal_type = 10
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
-        # print("root", root)  # 当前目录路径
-        # print("dirs", dirs)  # 当前路径下所有子目录
-        # print("files", files)  # 当前路径下所有非目录子文件
+        # print("root", root)
+        # print("dirs", dirs)
+        # print("files", files)
         for file in files:
             if os.path.splitext(file)[1] == ".csv":
                 file_list.append("{}/{}".format(root, file))
@@ -46,12 +46,12 @@ def process(fileName, saveName, class_type):
     df.to_csv(saveName, index=False)
 
 def main():    
-    save_dir = "/home/dyt/IForest_IoT/DataSets/normal-bin-feature"
+    save_dir = "../DataSets/normal-bin-feature"
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    file_list = file_name_walk('/home/dyt/IForest_IoT/DataSets/normal-dec-feature')
+    file_list = file_name_walk('../DataSets/normal-dec-feature')
     for i, file_name in enumerate(file_list):
-        save_path = "/home/dyt/IForest_IoT/DataSets/normal-bin-feature/{}.csv".format(i)
+        save_path = "../DataSets/normal-bin-feature/{}.csv".format(i)
         process(file_name, save_path, normal_type)
         print("finish: {}/{}".format(i, len(file_list)))
     
