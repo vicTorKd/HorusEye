@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/11/25 下午2:41
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : control_plane.py
-# @Software: PyCharm
-
 from fcntl import F_SETFL
 import os
 import pickle
