@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2021/7/13 下午5:27
-# @Author  : Yutao Dong
-# @Site    : 
-# @File    : iForest_detect.py
-# @Software: PyCharm
 from load_data import *
 # from Unsupervised_detect import *
 import numpy as np
@@ -150,7 +143,6 @@ def transfer_rule2(clf, path):
 
     INF=10000
     from collections import defaultdict
-    # 记录所有分支
     branches = defaultdict(set)
     for e in clf.estimators_:
         threshold = e.tree_.threshold.astype(np.int64)
@@ -159,43 +151,36 @@ def transfer_rule2(clf, path):
         for i in range(n_nodes):
             if (feature[i] < 0):  # leaf node
                 continue
-            branches[feature[i]].add(threshold[i])  # 将特征x的划分阈值添加
+            branches[feature[i]].add(threshold[i])
     for f in branches.keys():
         branches[f].add(INF)
     Feature_domain = pd.DataFrame({'key': 1}, index=[0])
 
-    # 计算各个特征笛卡尔积组合后的Table
     for f in branches.keys():
         temp = pd.DataFrame({f: tuple(branches[f]), 'key': 1})
         Feature_domain = pd.merge(Feature_domain, temp, on='key')
 
-    # 去除用于笛卡尔积的key
     Feature_domain.drop(columns=['key'], inplace=True)
     Feature_domain.sort_values(by=list(branches.keys()), ascending=True, inplace=True)
-    # 按列名排序
     Feature_domain.sort_index(axis=1, inplace=True)
-    # 对每个特征域赋值
     Feature_domain_label = clf.predict(Feature_domain)
     Feature_domain['label'] = Feature_domain_label
     Feature_domain.to_csv('./result/Feature_domain.csv')
 
-    # 记录每个规则的左开区间
     for f in branches.keys():
         Feature_domain[str(f) + '_left'] = -1
-    old_count = defaultdict(int)  # 用来记录左开区间
+    old_count = defaultdict(int)
     for i in range(0, len(Feature_domain)-1):
         if (Feature_domain['label'].iloc[i] != Feature_domain['label'].iloc[i + 1]):
             for f in branches.keys():
 
 
                 Feature_domain[str(f) + '_left'].iloc[i] = old_count[f]
-                #更改导致不同的特征值
+            
                 old_count[f] = Feature_domain[f].iloc[i]
 
     for f in branches.keys():
-        #为最后一个添加右闭空间
         Feature_domain[str(f) + '_left'].iloc[len(Feature_domain)-1] = old_count[f]
-        #丢弃f为-1，说明该区间没变化
         Feature_domain = Feature_domain[Feature_domain[str(f) + '_left']!=-1]
     Feature_domain = Feature_domain[Feature_domain['label'] == 1]
     n = len(Feature_domain)
