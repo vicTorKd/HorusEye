@@ -6,7 +6,8 @@ the anomalies considered by Gulliver Tunnel to reduce the false-positive rate. I
 
 ## Install
 ### Environments install
-conda env create -f iot.yaml
+1.  install TensorRT-8.2.1.8   
+2.  conda env create -f iot.yaml
 ## Usage:  
 
 ### Feature extraction
