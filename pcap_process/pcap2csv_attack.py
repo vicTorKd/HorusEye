@@ -1,195 +1,340 @@
-#!/usr/bin/env python3
-
-"""pcap2csv
-Script to extract specific pieces of information from a pcap file and
-render into a csv file.
-Usage: <program name> --pcap <input pcap file> --csv <output pcap file>
-"""
-
-import argparse
-import os.path
-import sys
+import random
+import numpy as np
+import pandas as pd
+import time
+# import Cython
+import copy
+from sklearn.model_selection import train_test_split
 import os
+from sklearn.preprocessing import Normalizer
 
-from scapy.utils import RawPcapReader
-from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, TCP
-
-ISIP = False
-#--------------------------------------------------
-
-def render_csv_row(timeInfo, pkt_sc, fh_csv):
-    """Write one packet entry into the CSV file.
-    pkt_sc is a 'bytes' representation of the packet as returned from
-    scapy's RawPcapReader
-    fh_csv is the csv file handle
-    """
-    ans_list = [0 for i in range(17)]
-    # Each line of the CSV has this format
-    fmt = '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}|{13}|{14}|{15}|{16}'
-    # timestamp
-    ans_list[0] = timeInfo.sec
-    if ISIP:
-        eth_length = 0
-        ip_pkt_sc = IP(pkt_sc)
-    else:
-        eth_length = 14
-        ether_pkt_sc = Ether(pkt_sc)
-        if ether_pkt_sc is None:
-            return False
-        # eth_src = ether_pkt_sc.src
-        # print('has IP: ', ether_pkt_sc.haslayer('IP'))
-        # print('has UDP: ', ether_pkt_sc.haslayer('UDP'))
-        if not ether_pkt_sc.haslayer('IP'):
-            print(fmt.format(*ans_list),file=fh_csv)
-            return True
-        else:
-            ip_pkt_sc = ether_pkt_sc[IP]
-
-    # src & dst MAC
-    ans_list[15] = ether_pkt_sc.src
-    ans_list[16] = ether_pkt_sc.dst
-    # srcIP
-    ans_list[1] = ip_pkt_sc.src
-    # dstIP
-    ans_list[3] = ip_pkt_sc.dst
-    if ip_pkt_sc.version != 4:
-        print(fmt.format(*ans_list),file=fh_csv)
-        return True
-    # ipv4
-    # protocol
-
-    ans_list[5] = pkt_sc[9 + eth_length]
-    # len
-    ans_list[14] = ip_pkt_sc.len
-    # ip_ihl
-    ans_list[6] = ip_pkt_sc.ihl
-    # ip_tos
-    ans_list[7] = ip_pkt_sc.tos
-    # ip_flags
-    ans_list[8] = pkt_sc[6 + eth_length] >> 5
-    # ip_ttl
-    ans_list[9] = ip_pkt_sc.ttl
-    if ip_pkt_sc.haslayer('UDP'):
-        udp_pkt_sc = ip_pkt_sc[UDP]
-        ans_list[2] = udp_pkt_sc.sport
-        ans_list[4] = udp_pkt_sc.dport
-        # udp_len
-        ans_list[13] = udp_pkt_sc.len
-    elif ip_pkt_sc.haslayer('TCP'):
-        tcp_pkt_sc = ip_pkt_sc[TCP]
-        ans_list[2] = tcp_pkt_sc.sport
-        ans_list[4] = tcp_pkt_sc.dport
-        # tcp_window
-        ans_list[12] = tcp_pkt_sc.window
-        # tcp_flag
-        ans_list[11] = pkt_sc[33 + eth_length]
-        # tco_dataofs
-        ans_list[10] = tcp_pkt_sc.dataofs
-    print(fmt.format(*ans_list),file=fh_csv)
-    return True
-    #--------------------------------------------------
-
-def pcap2csv(in_pcap, out_csv):
-    """Main entry function called from main to process the pcap and
-    generate the csv file.
-    in_pcap = name of the input pcap file (guaranteed to exist)
-    out_csv = name of the output csv file (will be created)
-    This function walks over each packet in the pcap file, and for
-    each packet invokes the render_csv_row() function to write one row
-    of the csv.
-    """
-    frame_num = 0
-    ignored_packets = 0
-    with open(out_csv, 'w') as fh_csv:
-        # Open the pcap file with scapy's RawPcapReader, and iterate over each packet
-        # packets = myrdpcap(in_pcap)
-        # for packet in packets:
-        #     if packet:
-        #         frame_num += 1
-        #         if not render_csv_row(packet[1], packet[0], fh_csv):
-        #             ignored_packets += 1
-        for packet in RawPcapReader(in_pcap):
-            # print("test", _)
-            try:
-                if packet:
-                    frame_num += 1
-                    if not render_csv_row(packet[1], packet[0], fh_csv):
-                        ignored_packets += 1
-                    if frame_num % 10000 == 0:
-                        print(frame_num)
-                    # if frame_num >= 2000000:
-                    #     break
-            except StopIteration:
-                # Shouldn't happen because the RawPcapReader iterator should also
-                # exit before this happens.
-                break
-
-    print('{} packets read, {} packets not written to CSV'.
-          format(frame_num, ignored_packets))
-#--------------------------------------------------
 
 def file_name_walk(file_dir):
     file_list = []
     for root, dirs, files in os.walk(file_dir):
         for file in files:
-            if os.path.splitext(file)[1] == ".pcap":
+            if os.path.splitext(file)[1] == ".csv":
                 file_list.append("{}/{}".format(root, file))
-    print(file_list)
     return file_list
-#--------------------------------------------------
+def dir_name_walk(file_dir):
+    dir_list = []
+    for root, dirs, files in os.walk(file_dir):
+        for dir in dirs:
 
-def open_source_data_process():
-    print('main')
-    file_list = file_name_walk('../DataSets/Open-Source/Normal')
-    save_root = '../DataSets/Open-Source/normal-packet-level-device'
-    # file_list = file_name_walk('../DataSets/Open-Source/Anomaly')
-    # save_root = '../DataSets/Open-Source/attack-packet-level-device'
-    if not os.path.exists(save_root):
-        os.makedirs(save_root)
-    file_list.sort()
-    for i, file_name in enumerate(file_list):
-        # if i != 10:
-        #     continue
-        # try:
-        print(file_name)
-        if i < 10:  # for file sort, because '.' > {0-9}
-            save_path = save_root + '/file-0{}.csv'.format(i)
-        else:
-            save_path = save_root + '/file-{}.csv'.format(i)
-        print('save to', save_path)
-        pcap2csv(file_name, save_path)
-        # print(file_name)
-        # except:
-        #     print('fail to open ', file_name)
+            dir_list.append("{}/{}".format(root, dir))
+    return dir_list
+
+def drop_dec_features(df):
+    drop_cols = ["srcPort", "dstPort", "protocol", 'srcIP', 'dstIP',
+                 "ip_ihl", "ip_tos", "ip_flags", "ip_ttl", "tcp_dataofs", "tcp_flag", "tcp_window",
+                 "udp_len",
+                 "length",
+                 'srcAddr1', 'srcAddr2', 'srcAddr3', 'srcAddr4', 'dstAddr1', 'dstAddr2', 'dstAddr3',
+                 'dstAddr4']
+    df.drop(drop_cols, axis=1, inplace=True)
+    return df
 
 
-def main():
-    """Program main entry"""
-    # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
-    normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']
-    normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
-    #normal_list=['IoT attack']
+def split_train_test(df, train_percent=0.8,bin=True):
+    drop_cols = ["srcPort", "dstPort", "protocol", 'srcIP', 'dstIP',
+                 "ip_ihl", "ip_tos", "ip_flags", "ip_ttl", "tcp_dataofs", "tcp_flag", "tcp_window",
+                 "udp_len",
+                 "length",
+                 'srcAddr1', 'srcAddr2', 'srcAddr3', 'srcAddr4', 'dstAddr1', 'dstAddr2', 'dstAddr3',
+                 'dstAddr4']
+    for col_names in ['srcAddr{}'.format(i) for i in range(1, 5)]:
+        df[col_names] = df[col_names].astype('str')
+    for col_names in ['dstAddr{}'.format(i) for i in range(1, 5)]:
+        df[col_names] = df[col_names].astype('str')
+    df['srcIP'] = df['srcAddr1'].str.cat([df['srcAddr2'], df['srcAddr3'], df['srcAddr4']], sep='.')
+    df['dstIP'] = df['dstAddr1'].str.cat([df['dstAddr2'], df['dstAddr3'], df['dstAddr4']], sep='.')
+    group = df.groupby(["srcIP", "srcPort", "dstIP", "dstPort", "protocol"])
+
+    # ngroups: the number of groups
+    total_index = np.arange(group.ngroups)
+    print('total flow number', len(total_index))
+    np.random.seed(1234)
+    np.random.shuffle(total_index)
+    split_index = int(len(total_index) * train_percent)
+    # ngroup(): Number each group from 0 to the number of groups - 1.
+    df_train = df[group.ngroup().isin(total_index[: split_index])]
+    df_test = df[group.ngroup().isin(total_index[split_index:])]
+    df_train.reset_index(drop=True, inplace=True)
+    df_test.reset_index(drop=True, inplace=True)
+    if bin:
+        df_train.drop(drop_cols, axis=1, inplace=True)
+        df_test.drop(drop_cols, axis=1, inplace=True)
+    else:
+        iot_feature_names = ["tcp_dataofs", "tcp_flag", "tcp_window","udp_len", "ip_ttl","srcPort", "dstPort", "protocol","ip_ihl", "ip_tos", "ip_flags","length", 'class']#
+
+        df_train = df_train[iot_feature_names]
+        df_test = df_test[iot_feature_names]
+
+
+
+    return df_train, df_test
+
+
+def get_bin_feature(df_total, feature_count):
+
+    port_col = []
+    for j in range(16):
+        port_col.append('srcPort-{}'.format(j))
+    for j in range(16):
+        port_col.append('dstPort-{}'.format(j))
+    flag_col = []
+    for j in range(8):
+        flag_col.append('ip_flags-{}'.format(j))
+    for j in range(8):
+        flag_col.append('tcp_flag-{}'.format(j))
+    if feature_count == 80:
+        df_total.drop(port_col, axis=1, inplace=True)
+        df_total.drop(flag_col, axis=1, inplace=True)
+    elif feature_count == 96:
+        df_total.drop(port_col, axis=1, inplace=True)
+    elif feature_count == 112:
+        df_total.drop(flag_col, axis=1, inplace=True)
+    elif feature_count == 120:
+        return df_total
+    return df_total
+def filter_loc_com(df,device_type='philips_camera'):
+
+    condition1 = np.array([df['srcAddr1'] == 192]) & np.array([df['srcAddr2'] == 168]) & np.array(
+        [df['srcAddr3'] == 1]) & np.array([df['dstAddr1'] == 192]) & np.array(
+        [df['dstAddr2'] == 168]) & np.array([df['dstAddr3'] == 1])
+    filter1 = (~condition1[0])
+    df = df[filter1]
+
+    df = df[df['dstAddr4'] != 255]
+    return df
+
+def load_iot_attack(attack_name='all',thr_time=10):
+    # load attack
+    df_attack = pd.DataFrame()
+    attack_path = './DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/'.format(thr_time)
+    if (attack_name=='all'):#load all
+        attack_list=os.listdir(attack_path)
+    else: #load specfic attack
+        attack_list = [attack_name]
+    for type_index, type_name in enumerate(attack_list):
+        if type_name in ['xbash']:
+            continue
+        file_list = file_name_walk('./DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
+        for i, file_path in enumerate(file_list):
+            tmp_df = pd.read_csv(file_path)
+            df_attack = df_attack.append(tmp_df, ignore_index=True)
+            print(file_path)
+    df_attack['class'] = -1
+    df_attack.dropna(axis=0, inplace=True)
+    return df_attack
+
+def open_source_load_iot_attack(thr_time=10):
+    # load attack
+    df_attack = pd.DataFrame()
+    attack_path = './DataSets/Open-Source/attack-flow-level-device_{:}_dou_burst_14_add_pk'.format(thr_time)
+
+    file_list = file_name_walk(attack_path)
+    for i, file_path in enumerate(file_list):
+
+        tmp_df = pd.read_csv(file_path)
+        df_attack = df_attack.append(tmp_df, ignore_index=True)
+        print(file_path)
+    df_attack['class'] = -1
+    df_attack.dropna(axis=0, inplace=True)
+    return df_attack
+
+def load_iot_data(device_list=['philips_camera'],thr_time=10,begin=0,end=5):
+    df_normal = pd.DataFrame()
+
+    # load normal
+    normal_list = device_list
+    device_info = device_list
     for type_index, type_name in enumerate(normal_list):
-        # file_list = file_name_walk('../DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
-        # save_root = '../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name)
-        # file_list = file_name_walk('../DataSets/Normal/data/{:}'.format(type_name))
-        # save_root = '../DataSets/normal-packet-level-device/{}'.format(type_name)
-        file_list = file_name_walk('../NewDataSets/Normal/data/{:}'.format(type_name))
-        save_root = '../NewDataSets/normal-packet-level-device/{}'.format(type_name)
-        if not os.path.exists(save_root):
-            os.makedirs(save_root)
+        if type_name in device_info:
+            file_list = file_name_walk('./DataSets/normal-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
+            file_list.sort()
+            df_normal_type = pd.DataFrame()
+            begin_num = begin
+            end_num = end
+            for i, file_path in enumerate(file_list[begin_num:end_num]):
+                # old:error int16
+                # tmp_df = pd.read_csv(file_path, dtype=np.int16)
+                # new: int32
+                print(file_path)
+                tmp_df = pd.read_csv(file_path)
+                df_normal_type = df_normal_type.append(tmp_df, ignore_index=True)
+
+            df_normal = df_normal.append(df_normal_type, ignore_index=True)
+    df_normal['class']=1 #in iforest the anomaly is negative number, thus the 1 is the normal flow
+    df_normal.dropna(axis=0,inplace=True)
+    return  df_normal
+
+
+def open_source_load_iot_data(thr_time=10, selected_list=[0]):
+    df_normal = pd.DataFrame()
+
+    # load normal
+    normal_path = './DataSets/Open-Source/normal-flow-level-device_{:}_dou_burst_14_add_pk'.format(thr_time)
+    file_list = file_name_walk(normal_path)
+    file_list.sort()
+    df_normal_type = pd.DataFrame()
+    for i, file_path in enumerate(file_list):
+        # old:error int16
+        # tmp_df = pd.read_csv(file_path, dtype=np.int16)
+        # new: int32
+        if i in selected_list:
+            print(file_path)
+            tmp_df = pd.read_csv(file_path)
+            df_normal_type = df_normal_type.append(tmp_df, ignore_index=True)
+
+    df_normal = df_normal.append(df_normal_type, ignore_index=True)
+    df_normal['class']=1 #in iforest the anomaly is negative number, thus the 1 is the normal flow
+    df_normal.dropna(axis=0,inplace=True)
+    return df_normal
+
+def load_iot_data_seq(device_list=['philips_camera'],begin=0,end=5):
+    df_normal = pd.DataFrame()
+
+    # load normal
+    normal_list = device_list
+    for type_index, type_name in enumerate(normal_list):
+        file_list = file_name_walk(
+            './DataSets/normal-kitsune_test/{:}'.format(type_name))
         file_list.sort()
-        for i, file_name in enumerate(file_list):
-            print(file_name)
-            if i<10:# for file sort, because '.' > {0-9}
-                save_path = save_root + '/{}-0{}.csv'.format(type_name, i)
-            else:
-                save_path = save_root+'/{}-{}.csv'.format(type_name, i)
-            pcap2csv(file_name, save_path)
+        df_normal_type = pd.DataFrame()
+        begin_num = begin
+        end_num = end
+        for i, file_path in enumerate(file_list[begin_num:end_num]):
+            # old:error int16
+            # tmp_df = pd.read_csv(file_path, dtype=np.int16)
+            # new: int32
+            try:
+                tmp_df = pd.read_csv(file_path, header=None)
+                df_normal_type = df_normal_type.append(tmp_df, ignore_index=True)
+            except:
+                print(file_path)
+        df_normal = df_normal.append(df_normal_type, ignore_index=True)
+    df_normal['class'] = 0
 
-#--------------------------------------------------
+    df_normal.fillna(0,inplace=True)
+    return df_normal
 
-if __name__ == '__main__':
-    main()
-    # open_source_data_process()
+def open_source_load_iot_data_seq(selected_list=[0]):
+    df_normal = pd.DataFrame()
+
+    # load normal
+    normal_path = './DataSets/Open-Source/normal_kitsune'
+    file_list = file_name_walk(normal_path)
+    file_list.sort()
+    df_normal_type = pd.DataFrame()
+    for i, file_path in enumerate(file_list):
+        # old:error int16
+        # tmp_df = pd.read_csv(file_path, dtype=np.int16)
+        # new: int32
+        if i in selected_list:
+            try:
+                tmp_df = pd.read_csv(file_path, header=None)
+                df_normal_type = df_normal_type.append(tmp_df, ignore_index=True)
+            except:
+                print(file_path)
+    df_normal = df_normal.append(df_normal_type, ignore_index=True)
+    df_normal['class'] = 0
+
+    df_normal.fillna(0,inplace=True)
+    return df_normal
+
+def load_iot_time_pk(device_list=['philips_camera'],begin=0,end=5):
+    df_normal_pk = pd.DataFrame()
+    df_normal_time=pd.DataFrame()
+    # load normal
+    normal_list = device_list
+    for type_index, type_name in enumerate(normal_list):
+        dir_list = dir_name_walk(
+            './DataSets/normal-seq_100_time/{:}'.format(type_name))
+        dir_list.sort()
+        df_normal_type_pk = pd.DataFrame()
+        df_normal_type_time = pd.DataFrame()
+        for i, file_path in enumerate(dir_list[begin:end]):
+            # old:error int16
+            # tmp_df = pd.read_csv(file_path, dtype=np.int16)
+            # new: int32
+            tmp_pk = pd.read_csv(file_path+'/pk.csv', index_col=0, header=None)
+            tmp_time = pd.read_csv(file_path+'/time.csv', index_col=0, header=None)
+            df_normal_type_pk = df_normal_type_pk.append(tmp_pk, ignore_index=True)
+            df_normal_type_time = df_normal_type_time.append(tmp_time, ignore_index=True)
+        df_normal_pk = df_normal_pk.append(df_normal_type_pk, ignore_index=True)
+        df_normal_time = df_normal_time.append(df_normal_type_pk, ignore_index=True)
+    df_normal_pk.fillna(0, inplace=True)
+    df_normal_time.fillna(0, inplace=True)
+
+    df_normal_pk = Normalizer().fit_transform(df_normal_pk.values)
+    df_normal_time = Normalizer().fit_transform(df_normal_time.values)
+
+    df_normal_pk = df_normal_pk[:, np.newaxis, :]
+
+    df_normal_time = df_normal_time[:, np.newaxis, :]
+    df_normal = np.concatenate((df_normal_pk, df_normal_time), axis=1)
+    return df_normal
+
+def load_iot_attack_time_pk(attack_name='all'):
+    df_attack_pk = pd.DataFrame()
+    df_attack_time = pd.DataFrame()
+    attack_path = './DataSets/Anomaly/attack_seq_100_time/'
+    if (attack_name == 'all'):  # load all
+        attack_list = os.listdir(attack_path)
+    else:  # load specfic attack
+        attack_list = [attack_name]
+    for type_index, type_name in enumerate(attack_list):
+        dir_list = dir_name_walk('./DataSets/Anomaly/attack_seq_100_time/{:}'.format(type_name))
+        # print(file_list)
+        dir_list.sort()
+        for i, file_path in enumerate(dir_list):
+            tmp_pk = pd.read_csv(file_path+'/pk.csv', index_col=0, header=None)
+            tmp_time = pd.read_csv(file_path+'/time.csv', index_col=0, header=None)
+            df_attack_pk = df_attack_pk.append(tmp_pk, ignore_index=True)
+            df_attack_time = df_attack_time.append(tmp_time, ignore_index=True)
+    df_attack_pk.fillna(0, inplace=True)
+    df_attack_time.fillna(0, inplace=True)
+
+    df_attack_pk = Normalizer().fit_transform(df_attack_pk.values)
+    df_attack_time = Normalizer().fit_transform(df_attack_time.values)
+
+    df_attack_pk = df_attack_pk[:, np.newaxis, :]
+    df_attack_time = df_attack_time[:, np.newaxis, :]
+
+    df_attack = np.concatenate((df_attack_pk, df_attack_time), axis=1)
+    return df_attack
+
+def load_iot_attack_seq(attack_name='all'):
+    # load attack
+    df_attack = pd.DataFrame()
+    attack_path = './DataSets/Anomaly/attack_kitsune/'
+    if (attack_name=='all'):#load all
+        attack_list=os.listdir(attack_path)
+    else: #load specfic attack
+        attack_list = [attack_name]
+    for type_index, type_name in enumerate(attack_list):
+        if type_name in ['xbash']:
+            continue
+        file_list = file_name_walk('./DataSets/Anomaly/attack_kitsune/{:}'.format(type_name))
+        #print(file_list)
+        for i, file_path in enumerate(file_list):
+            tmp_df = pd.read_csv(file_path, header=None)
+            df_attack = df_attack.append(tmp_df, ignore_index=True)
+    df_attack['class'] = 1 #bigger score is label i , indicating the anomaly
+    df_attack.fillna(0,inplace=True)
+    return df_attack
+
+def open_source_load_iot_attack_seq():
+    # load attack
+    df_attack = pd.DataFrame()
+    attack_path = './DataSets/Open-Source/attack_kitsune/'
+
+    file_list = file_name_walk(attack_path)
+    for i, file_path in enumerate(file_list):
+        tmp_df = pd.read_csv(file_path, header=None)
+        df_attack = df_attack.append(tmp_df, ignore_index=True)
+    df_attack['class'] = 1 #bigger score is label i , indicating the anomaly
+    df_attack.fillna(0,inplace=True)
+    return df_attack
+    
