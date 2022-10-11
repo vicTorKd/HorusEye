@@ -436,7 +436,7 @@ if __name__ == "__main__":
     # network and training
     KITSUNE = False
     OPEN_SOURCE = False
-    TRAIN = True 
+    TRAIN = False 
     TEST = True
     Use_filter = False
     BATCH_SIZE = 256
