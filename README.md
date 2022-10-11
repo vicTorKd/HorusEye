@@ -6,14 +6,14 @@ the anomalies considered by Gulliver Tunnel to reduce the false-positive rate. I
 
 ## Install
 ### Environments install
-1.  install TensorRT-8.2.1.8   
+1.  install TensorRT-8.2.1.8 (optional)   
 2.  conda env create -f iot.yaml
 ## Usage:  
 
 ### Feature extraction
-Partial data set(used in the article experiment) can be downloaded at    
+Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted. Partial data set(used in the article experiment) can be downloaded at    
 <https://drive.google.com/u/0/uc?id=16JFRl3XEPSDnZdgAeMtQ1NZ2x5u91aeO&export=download>.   
-(Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
+(The compressed file needs to be extracted in project folder)
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order:
     - pcap2csv_attack.py
     - csv_process_attack.py
