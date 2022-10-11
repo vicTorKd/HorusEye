@@ -111,7 +111,7 @@ def filter_loc_com(df,device_type='philips_camera'):
 def load_iot_attack(attack_name='all',thr_time=10):
     # load attack
     df_attack = pd.DataFrame()
-    attack_path = './DataSets/Anomaly/attack-packet-level-device/'
+    attack_path = './DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/'.format(thr_time)
     if (attack_name=='all'):#load all
         attack_list=os.listdir(attack_path)
     else: #load specfic attack
@@ -151,7 +151,7 @@ def load_iot_data(device_list=['philips_camera'],thr_time=10,begin=0,end=5):
     device_info = device_list
     for type_index, type_name in enumerate(normal_list):
         if type_name in device_info:
-            file_list = file_name_walk('./NewDataSets/normal-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
+            file_list = file_name_walk('./DataSets/normal-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
             file_list.sort()
             df_normal_type = pd.DataFrame()
             begin_num = begin
@@ -199,7 +199,7 @@ def load_iot_data_seq(device_list=['philips_camera'],begin=0,end=5):
     normal_list = device_list
     for type_index, type_name in enumerate(normal_list):
         file_list = file_name_walk(
-            './NewDataSets/normal-kitsune_test/{:}'.format(type_name))
+            './DataSets/normal-kitsune_test/{:}'.format(type_name))
         file_list.sort()
         df_normal_type = pd.DataFrame()
         begin_num = begin
