@@ -11,12 +11,12 @@ the anomalies considered by Gulliver Tunnel to reduce the false-positive rate. I
 ## Usage:  
 
 ### Feature extraction
-Partial data set(used in the demo code) can be downloaded at    
+Partial data set(used in the article experiment) can be downloaded at    
 <https://drive.google.com/u/0/uc?id=16JFRl3XEPSDnZdgAeMtQ1NZ2x5u91aeO&export=download>.   
 (Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted.)
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order:
-    - pcap2csv.py
-    - csv_process.py
+    - pcap2csv_attack.py
+    - csv_process_attack.py
     - extract_flow_size.py
 2.  For flow level feature extraction, run FE.py.  
 
