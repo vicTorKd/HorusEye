@@ -15,10 +15,14 @@ from volksdep.converters import load
 import iForest_detect
 import Kitsune.KitNET as kit
 from load_data import *
-from model import Kitsune, CNN_AE, CNN, CNN_DW
+from model import Kitsune, CNN_AE
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
+if not os.path.exists('./params/'):
+    os.makedirs('./params/')
+if not os.path.exists('./result/'):
+    os.makedirs('./result/')
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -434,7 +438,7 @@ if __name__ == "__main__":
     OPEN_SOURCE = False
     TRAIN = True 
     TEST = True
-    Use_filter = True
+    Use_filter = False
     BATCH_SIZE = 256
     TEST_BATCH_SIZE = 8600  # for int8 trt model
     # TEST_BATCH_SIZE = 40000  # for fp32/fp16 trt model
@@ -445,7 +449,7 @@ if __name__ == "__main__":
         else './params/CNN_DW_dilation.pkl'
 
     # TensorRT model path
-    tensorrt_save_path = './params/test_new_tensorrt_int8_CNN_DW_dilation.engine'
+    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation.engine'
 
     # Kitsune model path
     Kitsune_save_path = './params/Kitsune_model.pkl'
@@ -542,10 +546,12 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(model_save_path), strict=False)
         
         # load TensorRT model
-        trt_model = load(tensorrt_save_path)
+        # trt_model = load(tensorrt_save_path)
 
         test_throughput(model, 40000, test_X)
+        # test_throughput(trt_model, TEST_BATCH_SIZE, test_X)
         eval_y_label, rmse_list = test(model, test_loader)
+        # eval_y_label, rmse_list = test(trt_model, test_loader)
 
         if KITSUNE:
             # Kitsune data preprocess
@@ -595,9 +601,9 @@ if __name__ == "__main__":
         roc_record = roc_record.T
         roc_record.columns = ['fpr', 'tpr', 'thresholds']
         if OPEN_SOURCE:
-            roc_record.to_csv('./result/Open-Source/roc_record_new_datasets_filter_port.csv')
+            roc_record.to_csv('./result/Open-Source/roc_record.csv')
         else:
-            roc_record.to_csv('./result/roc_record_new_datasets_CNN_DW.csv')
+            roc_record.to_csv('./result/roc_record.csv')
 
     # test the rule
     # df_test_with_pred = test(device_list, feature_set, df_test)
