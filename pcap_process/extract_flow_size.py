@@ -116,7 +116,7 @@ def extract_flow_size_burst(in_csv, out_csv, thr_time, manul_cut,count_pk,pk_thr
     # df_data = pack_len_sum
     df_data = pd.read_csv(out_csv)
     # df_data['dst_port'] = 0
-    df_data = add_server_port(df_data, open_source=False)
+    df_data = add_server_port(df_data, open_source=True)
     for feature in port_list:
         df_data[feature] = 0
     for i in range(len(df_data)):
@@ -213,8 +213,6 @@ def open_source_data_process():
     manul_TCP_cut = True
     count_pk = defaultdict(int)
     print('main')
-    # file_list = file_name_walk('../DataSets/Open-Source/attack-dec-feature-device')
-    # save_root = '../DataSets/Open-Source/attack-flow-level-device_{}_dou_burst_{}_add_pk'.format(str(thr_time),pk_thr)
     file_list = file_name_walk('../DataSets/Open-Source/normal-dec-feature-device')
     save_root = '../DataSets/Open-Source/normal-flow-level-device_{}_dou_burst_{}_add_pk'.format(str(thr_time), pk_thr)
     if not os.path.exists(save_root):
@@ -223,9 +221,6 @@ def open_source_data_process():
     for i, file_name in enumerate(file_list):
         print(file_name)
         print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        if i not in [12]:
-            print('skip the file {}'.format(file_name))
-            continue
         if i < 10:  # for file sort, because '.' > {0-9}
             save_path = save_root + '/file-0{}.csv'.format(i)
         else:
@@ -267,6 +262,6 @@ def main():
             else:
                 save_path = save_root+'/{}-{}.csv'.format(type_name, i)
             count_pk=extract_flow_size_burst(file_name, save_path,thr_time,manul_TCP_cut,count_pk,pk_thr)
-main()
-# open_source_data_process()
+# main()
+open_source_data_process()
 
