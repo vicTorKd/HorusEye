@@ -141,63 +141,6 @@ def transfer_rule2(clf, path):
     merge_.to_csv(path)
 
 
-    INF=10000
-    from collections import defaultdict
-    branches = defaultdict(set)
-    for e in clf.estimators_:
-        threshold = e.tree_.threshold.astype(np.int64)
-        feature = e.tree_.feature
-        n_nodes = e.tree_.node_count
-        for i in range(n_nodes):
-            if (feature[i] < 0):  # leaf node
-                continue
-            branches[feature[i]].add(threshold[i])
-    for f in branches.keys():
-        branches[f].add(INF)
-    Feature_domain = pd.DataFrame({'key': 1}, index=[0])
-
-    for f in branches.keys():
-        temp = pd.DataFrame({f: tuple(branches[f]), 'key': 1})
-        Feature_domain = pd.merge(Feature_domain, temp, on='key')
-
-    Feature_domain.drop(columns=['key'], inplace=True)
-    Feature_domain.sort_values(by=list(branches.keys()), ascending=True, inplace=True)
-    Feature_domain.sort_index(axis=1, inplace=True)
-    Feature_domain_label = clf.predict(Feature_domain)
-    Feature_domain['label'] = Feature_domain_label
-    Feature_domain.to_csv('./result/Feature_domain.csv')
-
-    for f in branches.keys():
-        Feature_domain[str(f) + '_left'] = -1
-    old_count = defaultdict(int)
-    for i in range(0, len(Feature_domain)-1):
-        if (Feature_domain['label'].iloc[i] != Feature_domain['label'].iloc[i + 1]):
-            for f in branches.keys():
-
-
-                Feature_domain[str(f) + '_left'].iloc[i] = old_count[f]
-            
-                old_count[f] = Feature_domain[f].iloc[i]
-
-    for f in branches.keys():
-        Feature_domain[str(f) + '_left'].iloc[len(Feature_domain)-1] = old_count[f]
-        Feature_domain = Feature_domain[Feature_domain[str(f) + '_left']!=-1]
-    Feature_domain = Feature_domain[Feature_domain['label'] == 1]
-    n = len(Feature_domain)
-    for i in range(n):
-        flag = False
-        for f in branches.keys():
-            if Feature_domain[str(f) + '_left'].iloc[i] > Feature_domain[f].iloc[i]:
-                # temp = pd.Series(Feature_domain.iloc[i])
-                if Feature_domain[str(f) + '_left'].iloc[i]!=INF:
-                    temp = pd.Series(Feature_domain.iloc[i])
-                    temp[f] = INF
-                    flag = True
-                Feature_domain[str(f) + '_left'].iloc[i] = 0
-        if flag:
-            Feature_domain = Feature_domain.append(temp)
-    Feature_domain.to_csv(path)
-
 def train(device_name, feature_set, df_normal_train, df_normal_eval, df_attack_eval):
     # if 'server_port' in feature_set:
     #     df_normal_train = add_server_port(df_normal_train, open_source=True)
