@@ -42,8 +42,6 @@ def open_source_data_process():
     print('main')
     file_list = file_name_walk('../DataSets/Open-Source/normal-packet-level-device')
     save_root = '../DataSets/Open-Source/normal-dec-feature-device'
-    # file_list = file_name_walk('../DataSets/Open-Source/attack-packet-level-device')
-    # save_root = '../DataSets/Open-Source/attack-dec-feature-device'
     if not os.path.exists(save_root):
         os.makedirs(save_root)
     file_list.sort()
@@ -84,8 +82,8 @@ def main():
 if __name__ == '__main__':
     a = datetime.now()
     print("start time", a)
-    main()
-    # open_source_data_process()
+    # main()
+    open_source_data_process()
     b = datetime.now()
     print("end time", b)
     durn = (b-a).seconds
