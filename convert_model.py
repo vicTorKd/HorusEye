@@ -9,7 +9,7 @@ from volksdep.converters import torch2trt
 from volksdep.datasets import CustomDataset
 
 from load_data import *
-from model import CNN_SAM_MLP_AE1, CNN_SAM_MLP_AE2, CNN_SAM_MLP_AE3, CNN_AE
+from model import CNN_AE
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -84,7 +84,7 @@ def test_throughput(test_model, BATCH_SIZE, X):
 
 if __name__ == "__main__":
     model_save_path = './params/CNN_DW_dilation.pkl'
-    tensorrt_save_path = './params/tensorrt_fp16_CNN_DW_dilation.engine'
+    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation.engine'
     onnx_save_path = './params/onnx_model.onnx'
 
     # Hyper parameters
