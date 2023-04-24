@@ -222,6 +222,87 @@ class FE:
 
         csv_file.close()
 
+class FE_HorusEye(FE):
+    def __init__(self, file_path, limit=np.inf):
+        super(FE_HorusEye,self).__init__(file_path, limit=np.inf)
+
+    def get_next_vector(self):
+        if self.curPacketIndx == self.limit:
+            if self.parse_type == 'tsv':
+                self.tsvinf.close()
+            return []
+        srcport, dstport, proto = 0, 0, 0
+
+        ### Parse next packet ###
+
+        if self.parse_type == "scapy":
+            packet = self.scapyin[self.curPacketIndx]
+            IPtype = np.nan
+            timestamp = packet.time
+            framelen = len(packet)
+            if packet.haslayer(IP):  # IPv4
+                srcIP = packet[IP].src
+                dstIP = packet[IP].dst
+                proto = packet.proto
+                IPtype = 0
+            elif packet.haslayer(IPv6):  # ipv6
+                srcIP = packet[IPv6].src
+                dstIP = packet[IPv6].dst
+                IPtype = 1
+            else:
+                srcIP = ''
+                dstIP = ''
+
+            if packet.haslayer(TCP):
+                srcproto = str(packet[TCP].sport)
+                dstproto = str(packet[TCP].dport)
+                srcport, dstport = packet[TCP].sport, packet[TCP].dport
+
+
+            elif packet.haslayer(UDP):
+                srcproto = str(packet[UDP].sport)
+                dstproto = str(packet[UDP].dport)
+                srcport, dstport = packet[UDP].sport, packet[UDP].dport
+            else:
+                srcproto = ''
+                dstproto = ''
+
+            srcMAC = packet.src
+            dstMAC = packet.dst
+            if srcproto == '':  # it's a L2/L1 level protocol
+                if packet.haslayer(ARP):  # is ARP
+                    srcproto = 'arp'
+                    dstproto = 'arp'
+                    srcIP = packet[ARP].psrc  # src IP (ARP)
+                    dstIP = packet[ARP].pdst  # dst IP (ARP)
+                    IPtype = 0
+                elif packet.haslayer(ICMP):  # is ICMP
+                    srcproto = 'icmp'
+                    dstproto = 'icmp'
+                    IPtype = 0
+                elif srcIP + srcproto + dstIP + dstproto == '':  # some other protocol
+                    srcIP = packet.src  # src MAC
+                    dstIP = packet.dst  # dst MAC
+        else:
+            return []
+
+        self.curPacketIndx = self.curPacketIndx + 1
+
+        ### Extract Features
+        try:
+            # print(str([srcIP, srcport, proto]))
+            h1 = hashlib.md5(str([srcIP, srcport, proto]).encode('utf-8'))
+            h2 = hashlib.md5(str([dstIP, dstport, proto]).encode('utf-8'))
+            hash_sum = int.from_bytes(h1.digest(), byteorder='big') + int.from_bytes(h2.digest(), byteorder='big')
+            return np.append([np.array(hash_sum),srcport, dstport],
+                             self.nstat.updateGetStats(IPtype, srcMAC, dstMAC, srcIP, srcproto, dstIP, dstproto,
+                                                       int(framelen), float(timestamp)))
+        except Exception as e:
+            print(e)
+            return []
+
+
+
 
 def file_name_walk(file_dir):
     file_list = []
@@ -235,17 +316,15 @@ def file_name_walk(file_dir):
 
 def open_source_data_process():
     packet_limit = np.Inf  # the number of packets to process
-    # file_list = file_name_walk('./DataSets/Open-Source/Normal')
-    # save_root = './DataSets/Open-Source/normal_kitsune'
-    file_list = file_name_walk('./DataSets/Open-Source/Anomaly')
-    save_root = './DataSets/Open-Source/attack_kitsune'
+    file_list = file_name_walk('./DataSets/Open-Source/Normal')
+    save_root = './DataSets/Open-Source/normal_kitsune'
     if not os.path.exists(save_root):
         os.makedirs(save_root)
     file_list.sort()
     for i, file_name in enumerate(file_list):
         # try:
         print('processing PCAP: {}...'.format(file_name))
-        handler = FE(file_name, packet_limit)
+        handler = FE_HorusEye(file_name, packet_limit)
         if i < 10:  # for file sort, because '.' > {0-9}
             save_path = save_root + '/file-0{}.csv'.format(i)
         else:
@@ -260,20 +339,21 @@ def open_source_data_process():
 if __name__ == '__main__':
     packet_limit = np.Inf  # the number of packets to process
 
-    normal_list = os.listdir('./DataSets/Attack_iot_filter/Pcap/')
-    #normal_list = ['ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+    # normal_list = os.listdir('./DataSets/Attack_iot_filter/Pcap/')
+    normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
+                   'skyworth_camera','tplink_camera','xiaomi_camera','aqara_gateway','gree_gateway','ihorn_gateway',
+                   'tcl_gateway','xiaomi_gateway']
     for type_index, type_name in enumerate(normal_list):
-        file_list = file_name_walk('./DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
-        save_root = './DataSets/Anomaly/attack_kitsune/{}'.format(type_name)
-        #file_list = file_name_walk('./DataSets/Normal/data/{:}'.format(type_name))
-        #save_root = './DataSets/normal-kitsune_test/{}'.format(type_name)
+        # file_list = file_name_walk('./DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
+        # save_root = './DataSets/Anomaly/attack_kitsune/{}'.format(type_name)
+        file_list = file_name_walk('./DataSets/Normal/data/{:}'.format(type_name))
+        save_root = './DataSets/normal-kitsune_test/{}'.format(type_name)
         if not os.path.exists(save_root):
             os.makedirs(save_root)
         file_list.sort()
         for i, file_name in enumerate(file_list):
             # try:
-            handler = FE(file_name, packet_limit)
-
+            handler = FE_HorusEye(file_name, packet_limit)
             print(f'processing PCAP: {file_name}...')
             if i < 10:  # for file sort, because '.' > {0-9}
                 save_path = save_root + '/{}-0{}.csv'.format(type_name, i)
