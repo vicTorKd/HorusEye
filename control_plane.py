@@ -15,7 +15,9 @@ from volksdep.converters import load
 import iForest_detect
 import Kitsune.KitNET as kit
 from load_data import *
-from model import Kitsune, CNN_AE
+from model import Kitsune, CNN_AE_channel
+import warnings
+warnings.filterwarnings("ignore")
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -41,15 +43,35 @@ def setup_seed(seed):
 setup_seed(20)
 
 
-def data_processing(df):  # for testing
-    scaler_path = './params/Open-Source/scaler.pkl' if OPEN_SOURCE else './params/scaler.pkl'
+def data_processing(df, TWO_D):  # for testing
+    if KITSUNE:
+        scaler_path = './params/Open-Source/scaler_kitsune.pkl' if OPEN_SOURCE else './params/scaler_kitsune.pkl'
+    else:
+        scaler_path = './params/Open-Source/scaler.pkl' if OPEN_SOURCE else './params/scaler.pkl'
     scaler = pickle.load(open(scaler_path, 'rb'))
     X, y = df.drop(columns=['class', 0]), df['class']  # 0 is for hash key
     X, y = X.values, y.values
 
     X = scaler.transform(X)
     if not KITSUNE:
-        X = X[:, np.newaxis, :]
+        if TWO_D:
+            X = np.pad(X, ((0,0),(3,0)), 'constant')
+            index = np.empty((0,0))
+            Port_index = np.arange(4,-1,-1).reshape(5,-1)
+            MIstat_index = np.arange(5,20).reshape(5,-1)
+            HHstat_index = np.arange(20,55).reshape(5,-1)
+            HHstat_jit_index = np.arange(55,70).reshape(5,-1)
+            HpHpstat_index = np.arange(70,105).reshape(5,-1)
+            for i in range(5):
+                index = np.append(index, Port_index[i])
+                index = np.append(index, MIstat_index[i])
+                index = np.append(index, HHstat_index[i])
+                index = np.append(index, HHstat_jit_index[i])
+                index = np.append(index, HpHpstat_index[i])
+            # X = X[:, index.astype(np.int).tolist()].reshape(-1, 1, 5, 20)
+            X = X[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
+        else:
+            X = X[:, np.newaxis, :]
         X = torch.tensor(X, dtype=torch.float32)
         y = torch.tensor(y)
     return X, y
@@ -59,7 +81,7 @@ def train_data_processing_Kitsune(df_normal_train, df_attack_eval):
     # data preparing / transfer data format
     scaler = preprocessing.MinMaxScaler()
 
-    df_normal_train, df_normal_eval = train_test_split(df_normal_train, test_size=0.1)
+    df_normal_train, df_normal_eval = train_test_split(df_normal_train, test_size=0.2, random_state=20)
     X_train = df_normal_train.drop(columns=[0, 'class'])
     X_train = X_train.values
     X_train = scaler.fit_transform(X_train)
@@ -71,7 +93,7 @@ def train_data_processing_Kitsune(df_normal_train, df_attack_eval):
         if not os.path.exists('./params/'):
             os.makedirs('./params/')
 
-    scaler_path = './params/Open-Source/scaler.pkl' if OPEN_SOURCE else './params/scaler.pkl'
+    scaler_path = './params/Open-Source/scaler_kitsune.pkl' if OPEN_SOURCE else './params/scaler_kitsune.pkl'
     pickle.dump(scaler, open(scaler_path, 'wb'))
 
     # for record loss of the attack / normal
@@ -83,12 +105,13 @@ def train_data_processing_Kitsune(df_normal_train, df_attack_eval):
     return X_train, X_normal_eval, X_attack_eval
 
 
-def train_data_processing(df_normal_train, df_attack_eval):
+def train_data_processing(df_normal_train, df_attack_eval, TWO_D):
     # data preparing / transfer data format
     scaler = preprocessing.MinMaxScaler()
 
-    df_normal_train, df_normal_eval = train_test_split(df_normal_train, test_size=0.1)
-    df_eval = df_normal_eval.append(df_attack_eval)
+    df_normal_train, df_normal_eval = train_test_split(df_normal_train, test_size=0.2, random_state=20)
+
+    df_eval = pd.concat([df_normal_eval,df_attack_eval],axis=0)
     X_train, y_train, X_valid, y_valid = df_normal_train.drop(columns=[0, 'class']), df_normal_train[
         'class'], df_eval.drop(columns=[0, 'class']), df_eval['class']
     X_train, y_train, X_valid, y_valid = X_train.values, y_train.values, X_valid.values, y_valid.values
@@ -108,14 +131,6 @@ def train_data_processing(df_normal_train, df_attack_eval):
 
     X_valid = scaler.transform(X_valid)
 
-    X_train = X_train[:, np.newaxis, :]
-    X_valid = X_valid[:, np.newaxis, :]
-    X_train = torch.tensor(X_train, dtype=torch.float32)
-    X_valid = torch.tensor(X_valid, dtype=torch.float32)
-
-    y_train = torch.tensor(y_train)
-    y_valid = torch.tensor(y_valid)
-
     # for record loss of the attack / normal
     X_normal_eval, X_attack_eval = df_normal_eval.drop(columns=[0, 'class']), df_attack_eval.drop(columns=[0, 'class'])
     X_normal_eval, X_attack_eval = X_normal_eval.values, X_attack_eval.values
@@ -123,15 +138,47 @@ def train_data_processing(df_normal_train, df_attack_eval):
     X_normal_eval = scaler.transform(X_normal_eval)
     X_attack_eval = scaler.transform(X_attack_eval)
 
-    X_normal_eval, X_attack_eval = X_normal_eval[:, np.newaxis, :], X_attack_eval[:, np.newaxis, :]
-    X_normal_eval, X_attack_eval = torch.tensor(X_normal_eval, dtype=torch.float32), torch.tensor(X_attack_eval,
-                                                                                                  dtype=torch.float32)
-    # X_normal_eval, X_attack_eval = X_normal_eval.cuda(), X_attack_eval.cuda()
+    if TWO_D:
+        # Padding
+        X_train = np.pad(X_train, ((0,0),(3,0)), 'constant')
+        X_valid = np.pad(X_valid, ((0,0),(3,0)), 'constant')
+        X_normal_eval = np.pad(X_normal_eval, ((0,0),(3,0)), 'constant')
+        X_attack_eval = np.pad(X_attack_eval, ((0,0),(3,0)), 'constant')
+        # Generate index
+        index = np.empty((0,0))
+        Port_index = np.arange(4,-1,-1).reshape(5,-1)
+        MIstat_index = np.arange(5,20).reshape(5,-1)
+        HHstat_index = np.arange(20,55).reshape(5,-1)
+        HHstat_jit_index = np.arange(55,70).reshape(5,-1)
+        HpHpstat_index = np.arange(70,105).reshape(5,-1)
+        for i in range(5):
+            index = np.append(index, Port_index[i])
+            index = np.append(index, MIstat_index[i])
+            index = np.append(index, HHstat_index[i])
+            index = np.append(index, HHstat_jit_index[i])
+            index = np.append(index, HpHpstat_index[i])
+        X_train = X_train[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
+        X_valid = X_valid[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
+        X_normal_eval = X_normal_eval[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
+        X_attack_eval = X_attack_eval[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
+    else:
+        X_train = X_train[:, np.newaxis, :]
+        X_valid = X_valid[:, np.newaxis, :]
+        X_normal_eval = X_normal_eval[:, np.newaxis, :]
+        X_attack_eval = X_attack_eval[:, np.newaxis, :]
+    X_train = torch.tensor(X_train, dtype=torch.float32)
+    X_valid = torch.tensor(X_valid, dtype=torch.float32)
+
+    y_train = torch.tensor(y_train)
+    y_valid = torch.tensor(y_valid)
+
+    X_normal_eval = torch.tensor(X_normal_eval, dtype=torch.float32)
+    X_attack_eval = torch.tensor(X_attack_eval, dtype=torch.float32)
     return X_train, y_train, X_valid, y_valid, X_normal_eval, X_attack_eval
 
 
 def train_data_processing_numpy(X_normal, X_attack_eval):
-    X_normal_train, X_normal_eval = train_test_split(X_normal, test_size=0.1)
+    X_normal_train, X_normal_eval = train_test_split(X_normal, test_size=0.2, random_state=20)
 
     y_train = np.ones(X_normal_train.shape[0])
     y_eval_normal = np.ones(X_normal_eval.shape[0])
@@ -212,12 +259,12 @@ def test(test_model, test_loader):
     return eval_y_label, rmse_list
 
 
-def train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path):
+def train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path, TWO_D):
     # hyper_parameter
     lr = 1e-2
     weight_decay = 0.01
     # weight_decay = 1e-5
-    epoches = 10
+    epoches = 20
     INPUTSIZE = 100
 
     # init
@@ -237,7 +284,7 @@ def train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path):
                                                                                                        df_attack_eval)
     else:  # Dataframe
         X_train, y_train, X_valid, y_valid, X_normal_eval, X_attack_eval = train_data_processing(df_normal_train,
-                                                                                                 df_attack_eval)
+                                                                                                 df_attack_eval, TWO_D)
     print(X_train.shape)
 
     train_datasets = Data.TensorDataset(X_train, y_train)
@@ -252,6 +299,9 @@ def train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path):
     with torch.no_grad():
         model.eval()
         input = torch.randn(1, 1, INPUTSIZE)
+        if TWO_D:
+            # input = input.reshape(1, 1, 5, -1)
+            input = input.reshape(1, 5, -1)
         macs, params = profile(model, inputs=(input,))
         macs, params = clever_format([macs, params], "%.3f")
         print("the Params(M) is {:}  the MACs(G) is {:}".format(params, macs))
@@ -333,16 +383,33 @@ def train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path):
     loss_record.to_csv(loss_record_path)
     return model, phi
 
+def test_Kitsune(test_X, test_y,Kitsune_path):
+    # test
+    K = pickle.load(open(Kitsune_path, 'rb'))
+    rmse_test_list = []
+    test_y_label = []
+    print('begin test throughput')
+    begin = time.time()
+    for index in range(test_X.shape[0]):
+        rmse_eval = K.process(test_X[index,])
+        rmse_test_list.append(rmse_eval)
+        test_y_label.append(test_y[index,])
+    end = time.time()
+    total_ = test_X.shape[0]
 
-def train_test_Kitsune(X_train, X_normal_eval, X_attack_eval, test_X, test_y):
+    print('total exc pk_num', total_)
+    print('throughput is {:} pk/s'.format(total_ / (end - begin)))
+    print('time cost', end - begin)
+
+    return test_y_label, rmse_test_list
+
+def train_Kitsune(X_train, X_normal_eval, X_attack_eval, Kitsune_path):
     # normal = np.append(X_train, X_normal_eval, axis=0)
     # attack = X_attack_eval
 
     # KitNET params:
     maxAE = 20  # maximum size for any autoencoder in the ensemble layer
     FMgrace = 5000  # the number of instances taken to learn the feature mapping (the ensemble's architecture)
-    # ADgrace = 50000 #the number of instances used to train the anomaly detector (ensemble itself)
-    # ADgrace = int(9 * normal.shape[0] / 10)
     ADgrace = X_train.shape[0] - FMgrace
     epoches = 1
 
@@ -397,6 +464,7 @@ def train_test_Kitsune(X_train, X_normal_eval, X_attack_eval, test_X, test_y):
         if auc_eval > best_auc:
             best_auc = auc_eval
             best_epoch = epoch
+            pickle.dump(K,open(Kitsune_path, 'wb'))
 
         loss_record = loss_record.append(pd.DataFrame({'anomaly_loss': loss_attack, 'normal_loss': loss_normal,
                                                        'auc': auc_eval}, index=[0]))
@@ -409,67 +477,78 @@ def train_test_Kitsune(X_train, X_normal_eval, X_attack_eval, test_X, test_y):
 
     loss_record.to_csv('./result/Kitsune_loss_record_test.csv')
 
-    # test
-    rmse_test_list = []
-    test_y_label = []
-    for index in range(test_X.shape[0]):
-        rmse_eval = K.process(test_X[index,])
-        rmse_test_list.append(rmse_eval)
-        test_y_label.append(test_y[index,])
-
-    # test throughput
-    begin = time.time()
-    print('begin')
-    for i in range(X_train.shape[0]):
-        K.process(X_train[i,])  # will train during the grace periods, then execute on all the rest.
-    total_ = X_train.shape[0]
-    end = time.time()
-    print('total exc pk_num', total_)
-    print('throughput is {:} pk/s'.format(total_ / (end - begin)))
-    print('time cost', end - begin)
-
-    return test_y_label, rmse_test_list
+    return
 
 
 if __name__ == "__main__":
     # Hyper parameters
     # network and training
     KITSUNE = False
-    OPEN_SOURCE = False
-    TRAIN = False 
+    OPEN_SOURCE =False
+    TRAIN = False
+    TEST_ROBUST=False
     TEST = True
-    Use_filter = False
+    Use_filter = True
+    Per_Attack=True
+    Test_Throughput=False
+    Poisoning = False
+    PORT = True
+    TWO_D = True
     BATCH_SIZE = 256
-    TEST_BATCH_SIZE = 8600  # for int8 trt model
-    # TEST_BATCH_SIZE = 40000  # for fp32/fp16 trt model
-    INPUTSIZE = 100
+    TEST_BATCH_SIZE =60000  # for int8 trt model
+    INPUTSIZE = 105
+    INT8 = False # using int8 model after quntization
+
+    if TWO_D:
+        PORT = True
+    if KITSUNE:
+        PORT = False
+        TWO_D = False
+        if Per_Attack:
+            Test_Throughput = False
+        # Use_filter = False
 
     # Pytorch model path
-    model_save_path = './params/Open-Source/CNN_DW_dilation.pkl' if OPEN_SOURCE \
-        else './params/CNN_DW_dilation.pkl'
+    if OPEN_SOURCE:
+        model_save_path = './params/Open-Source/CNN_DW_dilation_channel_port.pkl'
+    else:
+        model_save_path = './params/CNN_DW_dilation_channel_port.pkl'
+
+
 
     # TensorRT model path
-    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation.engine'
+    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation_channel_port'+ str(TEST_BATCH_SIZE)+'.engine'
 
     # Kitsune model path
-    Kitsune_save_path = './params/Kitsune_model.pkl'
+    Kitsune_save_path = './params/Open-Source/Kitsune_model.pkl' if OPEN_SOURCE \
+        else './params/Kitsune_model.pkl'
 
-    torch.cuda.set_device(0)
-    device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway']
+    #attack dataset path
+    attack_path = './DataSets/Anomaly/attack_kitsune/'
+
+    torch.cuda.set_device(1)
+    device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway', 'linksys_router']
     device_list_camera = ['philips_camera', '360_camera', 'ezviz_camera', 'hichip_battery_camera', 'mercury_wirecamera',
-                   'skyworth_camera', 'tplink_camera', 'xiaomi_camera']  
+                   'skyworth_camera', 'tplink_camera', 'xiaomi_camera']
 
     # model
-    model = CNN_AE(input_size=INPUTSIZE)
+    if not KITSUNE:
+        model = CNN_AE_channel(input_size=INPUTSIZE)
 
     # feature in data plane
     feature_set = ['pk_num', 'sum_len']
-    print('loading attack data...')
-    df_attack = load_iot_attack_seq('all')
-    df_attack_data = load_iot_attack(attack_name='all', thr_time=1)
-    df_attack_test_data, df_attack_eval_data = train_test_split(df_attack_data, test_size=0.2, random_state=20)
-    df_attack_test = iForest_detect.filter(df_attack_test_data, df_attack)
-    df_attack_eval = iForest_detect.filter(df_attack_eval_data, df_attack)
+    if TRAIN or not Per_Attack:
+        print('loading attack data...')
+        df_attack = load_iot_attack_seq('all')
+        df_attack_test_data = load_iot_attack(attack_name='all', thr_time=1, skip=['http_ddos'])
+        df_attack_eval_data = load_iot_attack(attack_name='http_ddos', thr_time=1)
+        df_attack_test = iForest_detect.filter(df_attack_test_data, df_attack)
+        df_attack_eval = iForest_detect.filter(df_attack_eval_data, df_attack)
+        print('attack test', df_attack_test_data.shape)
+        print('attack eval', df_attack_eval_data.shape)
+        # if not PORT:
+        #     df_attack_test = df_attack_test.drop(columns=[1, 2])
+        #     df_attack_eval = df_attack_eval.drop(columns=[1, 2])
 
     if TRAIN:
         # train iForest to data plane
@@ -480,7 +559,8 @@ if __name__ == "__main__":
             df_normal_train_data = load_iot_data(device_list=device_list_camera, thr_time=1, begin=0, end=4)
             df_normal_train_data = df_normal_train_data.append(load_iot_data(device_list=device_list_gateway, thr_time=1, begin=0, end=4))
         print(df_normal_train_data.shape)
-        df_normal_train, df_normal_eval = train_test_split(df_normal_train_data, test_size=0.2)
+        df_normal_train, df_normal_eval = train_test_split(df_normal_train_data, test_size=0.2, random_state=20)
+        print(df_normal_train.shape)
         iForest_detect.train('all', feature_set, df_normal_train, df_normal_eval, df_attack_eval_data)
 
         # threshold eval
@@ -494,11 +574,19 @@ if __name__ == "__main__":
         else:
             df_normal_train = load_iot_data_seq(device_list=device_list_camera, begin=0, end=4)
             df_normal_train = df_normal_train.append(load_iot_data_seq(device_list=device_list_gateway, begin=0, end=4))
-        auto, phi = train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path)
+        if not PORT:
+            df_normal_train = df_normal_train.drop(columns=[1, 2])
+        if KITSUNE:
+            # Kitsune data preprocess
+            X_train, X_normal_eval, X_attack_eval = train_data_processing_Kitsune(df_normal_train, df_attack_eval)
+            # train and test Kitsune
+            train_Kitsune(X_train, X_normal_eval, X_attack_eval, Kitsune_save_path)
+        else:
+            auto, phi = train_autoencoder(model, df_normal_train, df_attack_eval, model_save_path, TWO_D)
 
     if TEST:  # for test
         # control plane
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and not KITSUNE and not INT8:
             model.cuda()
         print('loading testing data...')
         if OPEN_SOURCE:
@@ -506,104 +594,239 @@ if __name__ == "__main__":
         else:
             df_normal_test_con = load_iot_data_seq(device_list=device_list_camera, begin=4, end=6)
             df_normal_test_con = df_normal_test_con.append(load_iot_data_seq(device_list=device_list_gateway, begin=4, end=6))
-        df_test_con = df_normal_test_con.append(df_attack_test)  # the feature used in control plane
-
         # data plane
         if OPEN_SOURCE:
             df_normal_test_data = open_source_load_iot_data(thr_time=1, selected_list=[1, 3, 5, 8])
         else:
             df_normal_test_data = load_iot_data(device_list=device_list_camera, thr_time=1, begin=4, end=6)  # the feature used in data plane
             df_normal_test_data = df_normal_test_data.append(load_iot_data(device_list=device_list_gateway, thr_time=1, begin=4, end=6))
-        df_test_data = df_normal_test_data.append(df_attack_test_data)
-        df_test_data.dropna(axis=0, inplace=True)
 
-        # filter data to the same 5-tuple，filt the broadcast data.
-        df_test_con = iForest_detect.filter(df_test_data, df_test_con)
 
-        # data plane filter
-        df_test_with_pred = iForest_detect.test(['all'], feature_set, df_test_data)
-        anomaly_df = iForest_detect.get_Anomaly_ID(df_test_with_pred, 0.95)
+        if Per_Attack: #test for per attack or not
+            attack_list = os.listdir(attack_path)
+            # Downsampling 10% for normal traffic, avoiding metric bias.
+            drop_data, df_normal_test_con = train_test_split(df_normal_test_con, test_size=0.1)
+            drop_data, df_normal_test_data = train_test_split(df_normal_test_data, test_size=0.1)
 
-        # filt the control plane data
-        if Use_filter:
-            after_filer_test = iForest_detect.filter(anomaly_df, df_test_con)
-            pass_data = iForest_detect.pass_(anomaly_df, df_test_con)
-            print("pass:{}\nrecall:{}\ncoefficient:{}".format(pass_data.shape[0],
-                            after_filer_test.shape[0], df_test_con.shape[0]*1.0/after_filer_test.shape[0]))
-            print("abnormal:{}".format(df_attack_test.shape[0]))
         else:
-            after_filer_test = df_test_con
-        test_X, test_y = data_processing(after_filer_test)
+            attack_list = ['all']
 
-        # tranfer to test loader
-        if not KITSUNE:
-            test_datasets = Data.TensorDataset(test_X, test_y)
-            test_loader = Data.DataLoader(dataset=test_datasets, batch_size=TEST_BATCH_SIZE, shuffle=True, num_workers=0)
+        #log for per_attack
+        record_attack = pd.DataFrame(columns=['attack_type','fpr_1','tpr_1', 'thresholds_1','fpr_2','tpr_2', 'thresholds_2','pr_auc','roc_auc'])
 
-        # load AE checkpoints
-        # it will add new key in training profile phase, causing to calculate the FLOPs and MACs.
-        # and we drop this key by setting the strict to False
-        model.load_state_dict(torch.load(model_save_path), strict=False)
-        
-        # load TensorRT model
-        # trt_model = load(tensorrt_save_path)
-
-        test_throughput(model, 40000, test_X)
-        # test_throughput(trt_model, TEST_BATCH_SIZE, test_X)
-        eval_y_label, rmse_list = test(model, test_loader)
-        # eval_y_label, rmse_list = test(trt_model, test_loader)
-
-        if KITSUNE:
-            # Kitsune data preprocess
-            X_train, X_normal_eval, X_attack_eval = train_data_processing_Kitsune(df_normal_train, df_attack_eval)
-            # train and test Kitsune
-            eval_y_label, rmse_list = train_test_Kitsune(X_train, X_normal_eval, X_attack_eval, test_X, test_y)
-
-        # test Gulliver
-        # eval_y_label = []
-        # rmse_list = []
-        # eval_y_label.extend(after_filer_test['class'])
-        # rmse_list.extend(list(np.ones(after_filer_test.shape[0])))
-
-        if Use_filter:  # add the pass feature
-            eval_y_label.extend(pass_data['class'])
-            # we believe that the pass data is normal data. Thus, we set its' rmse 0
-            rmse_list.extend(list(np.zeros(pass_data.shape[0])))
-
-        # Calculate the auroc of the overall framework
-        fpr, tpr, thresholds = roc_curve(eval_y_label, rmse_list)
-        auc_eval = auc(fpr, tpr)
-        for i in range(len(fpr)):
-            if fpr[i] >= 0.01:
-                print('False positive rate', fpr[i])
-                print('True positive rate', tpr[i])
-                print('Thresholds is ', thresholds[i])
-                break
-        for i in range(len(fpr)):
-            if fpr[i] >= 0.05:
-                print('False positive rate', fpr[i])
-                print('True positive rate', tpr[i])
-                print('Thresholds is ', thresholds[i])
-                break
-        print('the auc_eval is ', auc_eval)
-
-        # Calculate the pr_auc of the overall framework
-        precision, recall, thresholds = precision_recall_curve(eval_y_label, rmse_list)
-        pr_auc = auc(recall, precision)
-        print('the pr_auc is ', pr_auc)
+        for attack_idx,attack_type in enumerate(attack_list):
+            if '.' in attack_type:
+                continue
+            print('-------------------------- processing ', attack_type,
+              ' type --------------------------')
+            if Per_Attack:
+                df_attack_test = load_iot_attack_seq(attack_type)
+                df_attack_test_data = load_iot_attack(attack_name=attack_type, thr_time=1)
+            df_test_con = pd.concat([df_normal_test_con,df_attack_test],axis=0)
+            df_test_data = pd.concat([df_normal_test_data,df_attack_test_data],axis=0)
 
 
-        # record the roc data
-        roc_record = pd.DataFrame()
-        roc_record = roc_record.append(pd.DataFrame(fpr).T)
-        roc_record = roc_record.append(pd.DataFrame(tpr).T)
-        roc_record = roc_record.append(pd.DataFrame(thresholds).T)
-        roc_record = roc_record.T
-        roc_record.columns = ['fpr', 'tpr', 'thresholds']
+            df_test_data.dropna(axis=0, inplace=True)
+
+            # filter data to the same 5-tuple，filt the broadcast data.
+            df_test_con = iForest_detect.filter(df_test_data, df_test_con)
+
+            if Use_filter:
+                # data plane filter
+                df_test_with_pred = iForest_detect.test(['all'], feature_set, df_test_data)
+                anomaly_df = iForest_detect.get_Anomaly_ID(df_test_with_pred, 0.95)
+                # filt the control plane data
+                after_filer_test = iForest_detect.filter(anomaly_df, df_test_con)
+                pass_data = iForest_detect.pass_(anomaly_df, df_test_con)
+                print("pass:{}\ninspection:{}\ncoefficient:{}".format(pass_data.shape[0],
+                                after_filer_test.shape[0], df_normal_test_con.shape[0]*1.0/after_filer_test.shape[0]))
+                print("abnormal:{}".format(df_attack_test.shape[0]))
+            else:
+                after_filer_test = df_test_con
+            if not PORT:
+                after_filer_test = after_filer_test.drop(columns=[1, 2])
+            test_X, test_y = data_processing(after_filer_test, TWO_D)
+
+            # tranfer to test loader
+            if not KITSUNE:
+                print('Test X shape',test_X.shape)
+                test_datasets = Data.TensorDataset(test_X, test_y)
+                test_loader = Data.DataLoader(dataset=test_datasets, batch_size=TEST_BATCH_SIZE, shuffle=True, num_workers=0)
+
+                # load AE checkpoints
+                # it will add new key in training profile phase, causing to calculate the FLOPs and MACs.
+                # and we drop this key by setting the strict to False
+                model.load_state_dict(torch.load(model_save_path), strict=False)
+
+                # load TensorRT model
+                if INT8:
+                    trt_model = load(tensorrt_save_path)
+                if Test_Throughput:
+                    if INT8:
+                        test_throughput(trt_model, TEST_BATCH_SIZE, test_X)
+                    else:
+                        test_throughput(model, TEST_BATCH_SIZE, test_X)
+                if INT8:
+                    eval_y_label, rmse_list = test(trt_model, test_loader)
+                else:
+                    eval_y_label, rmse_list = test(model, test_loader)
+
+            if KITSUNE:
+                # Kitsune data preprocess
+                eval_y_label, rmse_list = test_Kitsune(test_X, test_y, Kitsune_save_path)
+
+            # test Gulliver only
+            # eval_y_label = []
+            # rmse_list = []
+            # eval_y_label.extend(after_filer_test['class'])
+            # rmse_list.extend(list(np.ones(after_filer_test.shape[0])))
+
+            if Use_filter:  # add the pass feature
+                eval_y_label.extend(pass_data['class'])
+                # we believe that the pass data is normal data. Thus, we set its' rmse 0
+                rmse_list.extend(list(np.zeros(pass_data.shape[0])))
+
+            # Calculate the auroc of the overall framework
+            fpr, tpr, thresholds = roc_curve(eval_y_label, rmse_list)
+
+            # record raw rmse list of model
+            raw_res = [[eval_y_label[i], rmse_list[i]] for i in range(len(rmse_list))]
+            df_raw_res = pd.DataFrame(columns=['eval_y_label', 'rmse_list'], data=raw_res)
+            df_raw_res.to_csv('./result/rmse/raw_rmse_' + attack_type + '.csv')
+
+            auc_eval = auc(fpr, tpr)
+            eps = 1e-6
+            temp_fpr = 0
+            temp_tpr = 0
+            temp_thresholds = 0
+            for i in range(len(fpr)):
+                if fpr[i] <= 5e-5 + eps:
+                    temp_fpr = fpr[i]
+                    temp_tpr = tpr[i]
+                    temp_thresholds = thresholds[i]
+                else:
+                    break
+            print('False positive rate', temp_fpr)
+            print('True positive rate', temp_tpr)
+            print('Thresholds is ', temp_thresholds)
+            df1=pd.DataFrame({'attack_type':attack_type,'fpr_1':temp_fpr,'tpr_1':temp_tpr,'thresholds_1':temp_thresholds},index=[attack_idx])
+
+            temp_fpr = 0
+            temp_tpr = 0
+            temp_thresholds = 0
+            for i in range(len(fpr)):
+                if fpr[i] <= 5e-4 + eps:
+                    temp_fpr = fpr[i]
+                    temp_tpr = tpr[i]
+                    temp_thresholds = thresholds[i]
+                else:
+                    break
+            print('False positive rate', temp_fpr)
+            print('True positive rate', temp_tpr)
+            print('Thresholds is ', temp_thresholds)
+            df2 = pd.DataFrame({'fpr_2':temp_fpr,'tpr_2': temp_tpr, 'thresholds_2': temp_thresholds},index=[attack_idx])
+
+            print('the auc_eval is ', auc_eval)
+
+            # Calculate the pr_auc of the overall framework
+            precision, recall, thresholds_pr = precision_recall_curve(eval_y_label, rmse_list)
+            pr_auc = auc(recall, precision)
+            print('the pr_auc is ', pr_auc)
+            df3 = pd.DataFrame({'pr_auc': pr_auc, 'roc_auc': auc_eval},index=[attack_idx])
+            df_temp = pd.concat([df1,df2,df3],axis=1)
+            record_attack = pd.concat([record_attack,df_temp],axis=0)
+
+
+            # record the roc data
+            roc_record = pd.DataFrame(columns=['thresholds','fpr', 'tpr' ])
+            roc_record['fpr'] = fpr
+            roc_record['tpr'] = tpr
+            roc_record['thresholds'] = thresholds
+            if OPEN_SOURCE:
+                if Use_filter:
+                    roc_record.to_csv('./result/Open-Source/HorusEye/roc_record_split_' + attack_type + 'HorusEye.csv')
+                elif KITSUNE:
+                    roc_record.to_csv('./result/Open-Source/Kitsune/roc_record_split_' + attack_type + '.csv')
+                else:
+                    roc_record.to_csv('./result/Open-Source/Magnifier/roc_record_split_' + attack_type + '.csv')
+
+            else:
+                if Use_filter:
+                    roc_record.to_csv('./result/HorusEye/roc_record_split_'+attack_type+'.csv')
+                elif KITSUNE:
+                    roc_record.to_csv('./result/Kitsune/roc_record_split_' + attack_type + '.csv')
         if OPEN_SOURCE:
-            roc_record.to_csv('./result/Open-Source/roc_record.csv')
+            if Use_filter:
+                record_attack.to_csv('./result/Open-Source/HorusEye/record_attack.csv')
+            elif KITSUNE:
+                record_attack.to_csv('./result/Open-Source/Kitsune/record_attack.csv')
+            else:
+                record_attack.to_csv('./result/Open-Source/Magnifier/record_attack.csv')
         else:
-            roc_record.to_csv('./result/roc_record.csv')
+            if Use_filter:
+                record_attack.to_csv('./result/HorusEye/record_attack.csv')
+            elif KITSUNE:
+                record_attack.to_csv('./result/Kitsune/record_attack.csv')
+
+    if TEST_ROBUST:
+        Poisoning_ratio = 0.01
+        print('loading attack data...')
+        df_attack_eval_data = load_iot_attack(attack_name='http_ddos', thr_time=1)
+        print('loading training data...')
+        df_normal_train_data = load_iot_data(device_list=device_list_camera, thr_time=1, begin=0, end=4)
+        df_normal_train_data = df_normal_train_data.append(load_iot_data(device_list=device_list_gateway, thr_time=1, begin=0, end=4))
+        df_normal_train, df_normal_eval = train_test_split(df_normal_train_data, test_size=0.2, random_state=20)
+        print(df_normal_train.shape)
+        if Poisoning:
+            df_attack_poisoning_data = load_iot_attack(attack_name='mirai_router_filter', thr_time=1)
+            poisoning_size = len(df_attack_poisoning_data)
+            target_size = int(len(df_normal_train)*Poisoning_ratio)
+            while poisoning_size < target_size:
+                df_attack_poisoning_data = df_attack_poisoning_data.append(df_attack_poisoning_data.iloc[:min((target_size-poisoning_size),len(df_attack_poisoning_data))])
+                poisoning_size = len(df_attack_poisoning_data)
+            print(df_attack_poisoning_data.shape)
+            df_normal_train = df_normal_train.append(df_attack_poisoning_data)
+            iForest_detect.train('all', feature_set, df_normal_train, df_normal_eval, df_attack_eval_data)
+        if Poisoning:
+            robust_list = ['poisoning']
+        else:
+            robust_list = ['mix']
+        for robust_type in robust_list:
+            df_robust_result=pd.DataFrame()
+            if robust_type == 'poisoning':
+                robust_result_path='./result/df_robust_result_' + robust_type + '_' + str(Poisoning_ratio) + '.csv'
+                robust_attack_path='./DataSets/Anomaly/attack-flow-level-device_1_dou_burst_14_add_pk/mirai_router_filter'
+            else:
+                robust_result_path='./result/df_robust_result_' + robust_type + '.csv'
+                robust_attack_path='./DataSets/robust/{}/attack-flow-level-device_1_dou_burst_14_add_pk'.format(robust_type)
+            attack_list=os.listdir(robust_attack_path)
+            for attack_path in attack_list:
+                if '.csv.csv' in attack_path:
+                    continue
+                print('------------------', attack_path, '------------------')
+                df_attack_robust = pd.read_csv(robust_attack_path+'/'+attack_path)
+                df_attack_robust['class'] = -1
+                # df_attack.dropna(axis=0, inplace=True)
+                df_eval_data = df_normal_eval.append(df_attack_robust)
+                # df_eval_data = df_attack_robust
+                df_eval_with_pred = iForest_detect.test(['all'], feature_set, df_eval_data)
+
+                udp_test, tcp_test = df_eval_data[df_eval_data['udp_tcp'] == 0], df_eval_data[df_eval_data['udp_tcp'] == 1]
+                udp_test_y = udp_test['class']
+                tcp_test_y = tcp_test['class']
+                test_y = pd.concat([udp_test_y, tcp_test_y], axis=0)
+
+                return_table = classification_report(y_true=test_y, y_pred=df_eval_with_pred['pred'],
+                                                    target_names=['abnormal', 'normal'],
+                                                    output_dict=True)
+                df_robust_result = pd.concat([df_robust_result, pd.DataFrame(
+                    {'robust_attack':attack_path, 'abnormal_precision': round(return_table['abnormal']['precision'], 3),
+                    'abnormal_recall': round(return_table['abnormal']['recall'], 3),
+                    'normal_precision': round(return_table['normal']['precision'], 3),
+                    'normal_recall': round(return_table['normal']['recall'], 3),
+                    'support': return_table['normal']['support'], },
+                    index=[0])], axis=0)
+            df_robust_result.to_csv(robust_result_path)
 
     # test the rule
     # df_test_with_pred = test(device_list, feature_set, df_test)
