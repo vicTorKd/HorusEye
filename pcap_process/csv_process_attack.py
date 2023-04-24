@@ -61,13 +61,10 @@ def main():
     for type_index, type_name in enumerate(normal_list):
         # file_list = file_name_walk('../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name))
         # save_root = '../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name)
-        # file_list = file_name_walk('../DataSets/normal-packet-level-device/{:}'.format(type_name))
-        # save_root = '../DataSets/normal-dec-feature-device/{}'.format(type_name)
-        file_list = file_name_walk('../NewDataSets/normal-packet-level-device/{:}'.format(type_name))
-        save_root = '../NewDataSets/normal-dec-feature-device/{}'.format(type_name)
+        file_list = file_name_walk('../DataSets/normal-packet-level-device/{:}'.format(type_name))
+        save_root = '../DataSets/normal-dec-feature-device/{}'.format(type_name)
         if not os.path.exists(save_root):
             os.makedirs(save_root)
-
         file_list.sort()
         #print(file_list)
         for i, file_name in enumerate(file_list):
@@ -79,11 +76,27 @@ def main():
             new_extract(file_name, save_path)
             print("finish: {}/{}".format(i, len(file_list)))
 
+def roubust_process():
+    normal_list = ['mix']
+    for type_index, type_name in enumerate(normal_list):
+        file_list = file_name_walk('../DataSets/robust/{}/attack-packet-level-device'.format(type_name))
+        save_root = '../DataSets/robust/{}/attack-dec-feature-device'.format(type_name)
+        if not os.path.exists(save_root):
+            os.makedirs(save_root)
+        file_list.sort()
+        #print(file_list)
+        for i, file_name in enumerate(file_list):
+            print(file_name)
+            save_path = save_root + '/{}'.format(file_name.split('/')[-1])
+            new_extract(file_name, save_path)
+            print("finish: {}/{}".format(i, len(file_list)))
+
 if __name__ == '__main__':
     a = datetime.now()
     print("start time", a)
     # main()
-    open_source_data_process()
+    # open_source_data_process()
+    roubust_process()
     b = datetime.now()
     print("end time", b)
     durn = (b-a).seconds
