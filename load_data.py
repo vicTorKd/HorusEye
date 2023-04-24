@@ -108,7 +108,7 @@ def filter_loc_com(df,device_type='philips_camera'):
     df = df[df['dstAddr4'] != 255]
     return df
 
-def load_iot_attack(attack_name='all',thr_time=10):
+def load_iot_attack(attack_name='all',thr_time=10,skip=[]):
     # load attack
     df_attack = pd.DataFrame()
     attack_path = './DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/'.format(thr_time)
@@ -117,7 +117,7 @@ def load_iot_attack(attack_name='all',thr_time=10):
     else: #load specfic attack
         attack_list = [attack_name]
     for type_index, type_name in enumerate(attack_list):
-        if type_name in ['xbash']:
+        if type_name in skip:
             continue
         file_list = file_name_walk('./DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
         for i, file_path in enumerate(file_list):
@@ -128,20 +128,6 @@ def load_iot_attack(attack_name='all',thr_time=10):
     df_attack.dropna(axis=0, inplace=True)
     return df_attack
 
-def open_source_load_iot_attack(thr_time=10):
-    # load attack
-    df_attack = pd.DataFrame()
-    attack_path = './DataSets/Open-Source/attack-flow-level-device_{:}_dou_burst_14_add_pk'.format(thr_time)
-
-    file_list = file_name_walk(attack_path)
-    for i, file_path in enumerate(file_list):
-
-        tmp_df = pd.read_csv(file_path)
-        df_attack = df_attack.append(tmp_df, ignore_index=True)
-        print(file_path)
-    df_attack['class'] = -1
-    df_attack.dropna(axis=0, inplace=True)
-    return df_attack
 
 def load_iot_data(device_list=['philips_camera'],thr_time=10,begin=0,end=5):
     df_normal = pd.DataFrame()
@@ -243,98 +229,31 @@ def open_source_load_iot_data_seq(selected_list=[0]):
     df_normal.fillna(0,inplace=True)
     return df_normal
 
-def load_iot_time_pk(device_list=['philips_camera'],begin=0,end=5):
-    df_normal_pk = pd.DataFrame()
-    df_normal_time=pd.DataFrame()
-    # load normal
-    normal_list = device_list
-    for type_index, type_name in enumerate(normal_list):
-        dir_list = dir_name_walk(
-            './DataSets/normal-seq_100_time/{:}'.format(type_name))
-        dir_list.sort()
-        df_normal_type_pk = pd.DataFrame()
-        df_normal_type_time = pd.DataFrame()
-        for i, file_path in enumerate(dir_list[begin:end]):
-            # old:error int16
-            # tmp_df = pd.read_csv(file_path, dtype=np.int16)
-            # new: int32
-            tmp_pk = pd.read_csv(file_path+'/pk.csv', index_col=0, header=None)
-            tmp_time = pd.read_csv(file_path+'/time.csv', index_col=0, header=None)
-            df_normal_type_pk = df_normal_type_pk.append(tmp_pk, ignore_index=True)
-            df_normal_type_time = df_normal_type_time.append(tmp_time, ignore_index=True)
-        df_normal_pk = df_normal_pk.append(df_normal_type_pk, ignore_index=True)
-        df_normal_time = df_normal_time.append(df_normal_type_pk, ignore_index=True)
-    df_normal_pk.fillna(0, inplace=True)
-    df_normal_time.fillna(0, inplace=True)
-
-    df_normal_pk = Normalizer().fit_transform(df_normal_pk.values)
-    df_normal_time = Normalizer().fit_transform(df_normal_time.values)
-
-    df_normal_pk = df_normal_pk[:, np.newaxis, :]
-
-    df_normal_time = df_normal_time[:, np.newaxis, :]
-    df_normal = np.concatenate((df_normal_pk, df_normal_time), axis=1)
-    return df_normal
-
-def load_iot_attack_time_pk(attack_name='all'):
-    df_attack_pk = pd.DataFrame()
-    df_attack_time = pd.DataFrame()
-    attack_path = './DataSets/Anomaly/attack_seq_100_time/'
-    if (attack_name == 'all'):  # load all
-        attack_list = os.listdir(attack_path)
-    else:  # load specfic attack
-        attack_list = [attack_name]
-    for type_index, type_name in enumerate(attack_list):
-        dir_list = dir_name_walk('./DataSets/Anomaly/attack_seq_100_time/{:}'.format(type_name))
-        # print(file_list)
-        dir_list.sort()
-        for i, file_path in enumerate(dir_list):
-            tmp_pk = pd.read_csv(file_path+'/pk.csv', index_col=0, header=None)
-            tmp_time = pd.read_csv(file_path+'/time.csv', index_col=0, header=None)
-            df_attack_pk = df_attack_pk.append(tmp_pk, ignore_index=True)
-            df_attack_time = df_attack_time.append(tmp_time, ignore_index=True)
-    df_attack_pk.fillna(0, inplace=True)
-    df_attack_time.fillna(0, inplace=True)
-
-    df_attack_pk = Normalizer().fit_transform(df_attack_pk.values)
-    df_attack_time = Normalizer().fit_transform(df_attack_time.values)
-
-    df_attack_pk = df_attack_pk[:, np.newaxis, :]
-    df_attack_time = df_attack_time[:, np.newaxis, :]
-
-    df_attack = np.concatenate((df_attack_pk, df_attack_time), axis=1)
-    return df_attack
 
 def load_iot_attack_seq(attack_name='all'):
     # load attack
     df_attack = pd.DataFrame()
+    df_attack_label = pd.DataFrame()
     attack_path = './DataSets/Anomaly/attack_kitsune/'
     if (attack_name=='all'):#load all
         attack_list=os.listdir(attack_path)
+        # print(attack_list)
     else: #load specfic attack
         attack_list = [attack_name]
     for type_index, type_name in enumerate(attack_list):
-        if type_name in ['xbash']:
-            continue
         file_list = file_name_walk('./DataSets/Anomaly/attack_kitsune/{:}'.format(type_name))
         #print(file_list)
         for i, file_path in enumerate(file_list):
+            if 'label' in file_path:
+                continue
             tmp_df = pd.read_csv(file_path, header=None)
             df_attack = df_attack.append(tmp_df, ignore_index=True)
-    df_attack['class'] = 1 #bigger score is label i , indicating the anomaly
+            if file_path.replace('.csv', '_label.csv') in file_list:
+                tmp_label = pd.read_csv(file_path.replace('.csv', '_label.csv'), header=None)
+            else:
+                tmp_label = pd.DataFrame(data=([1]*len(tmp_df)), index=None)
+            df_attack_label = df_attack_label.append(tmp_label, ignore_index=True)
+    df_attack['class'] = df_attack_label.values
     df_attack.fillna(0,inplace=True)
     return df_attack
 
-def open_source_load_iot_attack_seq():
-    # load attack
-    df_attack = pd.DataFrame()
-    attack_path = './DataSets/Open-Source/attack_kitsune/'
-
-    file_list = file_name_walk(attack_path)
-    for i, file_path in enumerate(file_list):
-        tmp_df = pd.read_csv(file_path, header=None)
-        df_attack = df_attack.append(tmp_df, ignore_index=True)
-    df_attack['class'] = 1 #bigger score is label i , indicating the anomaly
-    df_attack.fillna(0,inplace=True)
-    return df_attack
-    
