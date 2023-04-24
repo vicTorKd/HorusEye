@@ -13,20 +13,22 @@ def add_server_port(df_data, open_source=False):
     open_source_MAC_list = ['70:ee:50:18:34:43', 'f4:f2:6d:93:51:f1', '00:16:6c:ab:6b:88', '30:8c:fb:2f:e4:b2',
                             '00:62:6e:51:27:2e', 'e8:ab:fa:19:de:4f', '00:24:e4:11:18:a8', 'ec:1a:59:83:28:11',
                             '18:b4:30:25:be:e4', '70:ee:50:03:b8:ac', 'd0:73:d5:01:83:08', '30:8c:fb:b6:ea:45']
-    our_MAC_list = ['e4:aa:ec:23:97:db', 'b0:59:47:a2:b2:ab', '54:ef:44:cd:f4:5d', '54:ef:44:cd:42:95',
+    ours_MAC_list = ['e4:aa:ec:23:97:db', 'b0:59:47:a2:b2:ab', '54:ef:44:cd:f4:5d', '54:ef:44:cd:42:95',
                     'b8:c6:aa:08:45:26', 'f8:8c:21:0b:ec:26', '7c:25:da:62:14:52', 'd4:b7:61:bc:ac:10',
                     'b0:f8:93:42:22:bf', '90:76:9f:50:27:d9', '68:6d:bc:a9:7d:7c', 'dc:bd:7a:c6:b8:ae',
-                    '50:2c:c6:04:e2:7c']
+                    '50:2c:c6:04:e2:7c', '60:38:e0:c1:c5:a0', '62:38:e0:c1:c5:a0']
     if open_source:
         MAC_list = open_source_MAC_list
     else:
-        MAC_list = our_MAC_list
+        MAC_list = ours_MAC_list
     df_data['server_port'] = 0
     for i in range(len(df_data)):
         src_port = int(df_data.at[i, '5-tuple'].split(',')[1].replace(" ", ""))
         dst_port = int(df_data.at[i, '5-tuple'].split(',')[3].replace(" ", ""))
         src_MAC = df_data.at[i, 'MAC'].split('\'')[1]
         dst_MAC = df_data.at[i, 'MAC'].split('\'')[3]
+        # print('data ', type(src_MAC), src_MAC)
+        # print('list ', type(MAC_list[-2]), MAC_list[-2])
         if src_MAC in MAC_list:
             df_data.at[i, 'server_port'] = dst_port
         else:
@@ -39,7 +41,7 @@ def filter_loc_com(df):
         [df['dstAddr2'] == 168]) & np.array([df['dstAddr3'] == 1])
     # filter1 = (~condition1[0])
     # df = df[filter1]
-    df = df[df['dstAddr4'] != 255]
+    # df = df[df['dstAddr4'] != 255]
     tcp = df[df['protocol'] == 6]
     udp = df[df['protocol'] == 17]
     return tcp.append(udp)
@@ -57,7 +59,7 @@ def extract_flow_size_burst(in_csv, out_csv, thr_time, manul_cut,count_pk,pk_thr
     df['dstIP'] = df['dstAddr1'].str.cat([df['dstAddr2'], df['dstAddr3'], df['dstAddr4']], sep='.')
     # group = df.groupby(["srcIP", "srcPort", "dstIP", "dstPort", "protocol"])
 
-    real_pack_len_sum = defaultdict(list)  # hash_key :{'cur_timestamp','sum_len','5-tuple',pk_num}
+    real_pack_len_sum = defaultdict(list)  # hash_key :{'cur_timestamp','sum_len','udp_tcp','5-tuple',pk_num,MAC}
     pack_len_sum = pd.DataFrame(columns=['5-tuple', 'sum_len', 'udp_tcp','pk_num','MAC'])  # udp-0 tcp-1,for one burst
     # thr_time=10
     # thr_interval=5
@@ -116,7 +118,7 @@ def extract_flow_size_burst(in_csv, out_csv, thr_time, manul_cut,count_pk,pk_thr
     # df_data = pack_len_sum
     df_data = pd.read_csv(out_csv)
     # df_data['dst_port'] = 0
-    df_data = add_server_port(df_data, open_source=True)
+    df_data = add_server_port(df_data, open_source=False)
     for feature in port_list:
         df_data[feature] = 0
     for i in range(len(df_data)):
@@ -135,7 +137,7 @@ def extract_flow_size_burst(in_csv, out_csv, thr_time, manul_cut,count_pk,pk_thr
 
 def extract_flow_size(in_csv, out_csv,thr_time,manul_TCP_cut):
     df=pd.read_csv(in_csv)
-    df=filter_loc_com(df)
+    # df=filter_loc_com(df)
     df.dropna(axis=0,inplace=True)
     for col_names in ['srcAddr{}'.format(i) for i in range(1, 5)]:
         df[col_names] = df[col_names].astype('int').astype('str')
@@ -234,27 +236,28 @@ def open_source_data_process():
 
 def main():
     """Program main entry"""
+    normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+    normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
     # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
     thr_time=1
     pk_thr=14
     manul_TCP_cut=True
     count_pk=defaultdict(int)
-    normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
-    normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
     for type_index, type_name in enumerate(normal_list):
-        if type_name not in ['gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway']:
-            print("skip: ", type_name)
-            continue
+        # if type_name not in ['udp_ddos_router']:
+        #     print("skip: ", type_name)
+        #     continue
         # file_list = file_name_walk('../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name))
         # save_root = '../DataSets/Anomaly/attack-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
-        # file_list = file_name_walk('../DataSets/normal-dec-feature-device/{}'.format(type_name))
-        # save_root = '../DataSets/normal-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
-        file_list = file_name_walk('../NewDataSets/normal-dec-feature-device/{}'.format(type_name))
-        save_root = '../NewDataSets/normal-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
+        file_list = file_name_walk('../DataSets/normal-dec-feature-device/{}'.format(type_name))
+        save_root = '../DataSets/normal-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
         if not os.path.exists(save_root):
             os.makedirs(save_root)
         file_list.sort()
         for i, file_name in enumerate(file_list):
+            # if i != 5:
+            #     print("skip: ", i)
+            #     continue
             print(file_name)
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             if i<10:# for file sort, because '.' > {0-9}
@@ -262,6 +265,27 @@ def main():
             else:
                 save_path = save_root+'/{}-{}.csv'.format(type_name, i)
             count_pk=extract_flow_size_burst(file_name, save_path,thr_time,manul_TCP_cut,count_pk,pk_thr)
+
+def roubust_process():
+    """Program main entry"""
+    thr_time=1
+    pk_thr=14
+    manul_TCP_cut=True
+    count_pk=defaultdict(int)
+    normal_list = ['mix']
+    for type_index, type_name in enumerate(normal_list):
+        file_list = file_name_walk('../DataSets/robust/{}/attack-dec-feature-device'.format(type_name))
+        save_root = '../DataSets/robust/{}/attack-flow-level-device_{}_dou_burst_{}_add_pk'.format(type_name, str(thr_time),pk_thr)
+        if not os.path.exists(save_root):
+            os.makedirs(save_root)
+        file_list.sort()
+        for i, file_name in enumerate(file_list):
+            print(file_name)
+            print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            save_path = save_root + '/{}'.format(file_name.split('/')[-1])
+            count_pk=extract_flow_size_burst(file_name, save_path,thr_time,manul_TCP_cut,count_pk,pk_thr)
+
 # main()
-open_source_data_process()
+roubust_process()
+# open_source_data_process()
 
