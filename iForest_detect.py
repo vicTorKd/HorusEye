@@ -166,75 +166,76 @@ def train(device_name, feature_set, df_normal_train, df_normal_eval, df_attack_e
     best_return = {}
     port_contamination = 0.05
 
-    iforest_record = pd.DataFrame(columns=['contamination', 'm_samples', 'num_estimators', 'anomaly_recall',
+    iforest_record = pd.DataFrame(columns=['contamination_port','contamination', 'm_samples', 'num_estimators', 'anomaly_recall',
                                            'normal_recall'])
-    for num_estimators in [200]:  # 100,200,300
-        for m_samples in [5000]:  # 300,400
-            for contamination in [0.15]:
-                clf_udp = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
-                                          contamination=contamination,n_jobs=8)
-                clf_tcp = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
-                                          contamination=contamination,n_jobs=8)
-                clf_tcp_port = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
-                                          contamination=port_contamination, n_jobs=8)
-                clf_udp_port = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
-                                               contamination=port_contamination, n_jobs=8)
+    for contamination_p in [0.05]:
+        for num_estimators in [200]:  # 100,200,300
+            for m_samples in [5000]:  # 300,400
+                for contamination in [0.15]:
+                    clf_udp = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
+                                            contamination=contamination,n_jobs=8)
+                    clf_tcp = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
+                                            contamination=contamination,n_jobs=8)
+                    clf_tcp_port = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
+                                            contamination=contamination_p, n_jobs=8)
+                    clf_udp_port = IsolationForest(n_estimators=num_estimators, max_samples=m_samples, random_state=114514,
+                                                contamination=contamination_p, n_jobs=8)
 
-                if len(feature_set) == 1:
-                    # print(udp_x_train[feature_set])
-                    clf_udp.fit(udp_x_train[feature_set].values.reshape(-1, 1))
-                    clf_tcp.fit(tcp_x_train[feature_set].values.reshape(-1, 1))
-                    y_pred_eval_udp = clf_udp.predict(udp_x_eval[feature_set].values.reshape(-1, 1))
-                    y_pred_eval_tcp = clf_tcp.predict(tcp_x_eval[feature_set].values.reshape(-1, 1))
-                else:
-                    clf_udp.fit(udp_x_train[feature_set])
-                    clf_tcp.fit(tcp_x_train[feature_set])
-                    y_pred_eval_udp = clf_udp.predict(udp_x_eval[feature_set])
-                    y_pred_eval_tcp = clf_tcp.predict(tcp_x_eval[feature_set])
-                    clf_udp_port.fit(udp_x_train[feature_set_port])
-                    clf_tcp_port.fit(tcp_x_train[feature_set_port])
+                    if len(feature_set) == 1:
+                        # print(udp_x_train[feature_set])
+                        clf_udp.fit(udp_x_train[feature_set].values.reshape(-1, 1))
+                        clf_tcp.fit(tcp_x_train[feature_set].values.reshape(-1, 1))
+                        y_pred_eval_udp = clf_udp.predict(udp_x_eval[feature_set].values.reshape(-1, 1))
+                        y_pred_eval_tcp = clf_tcp.predict(tcp_x_eval[feature_set].values.reshape(-1, 1))
+                    else:
+                        clf_udp.fit(udp_x_train[feature_set])
+                        clf_tcp.fit(tcp_x_train[feature_set])
+                        y_pred_eval_udp = clf_udp.predict(udp_x_eval[feature_set])
+                        y_pred_eval_tcp = clf_tcp.predict(tcp_x_eval[feature_set])
+                        clf_udp_port.fit(udp_x_train[feature_set_port])
+                        clf_tcp_port.fit(tcp_x_train[feature_set_port])
 
-                    y_pred_eval_udp_port = clf_udp_port.predict(udp_x_eval[feature_set_port])
-                    y_pred_eval_tcp_port = clf_tcp_port.predict(tcp_x_eval[feature_set_port])
-                # y_pred_eval = np.concatenate((y_pred_eval_udp , y_pred_eval_tcp ))
-                y_pred_eval = np.concatenate((y_pred_eval_udp | y_pred_eval_udp_port, y_pred_eval_tcp | y_pred_eval_tcp_port))
-                eval_y = udp_eval_y.append(tcp_eval_y)
-                eval_x = udp_x_eval.append(tcp_x_eval)
+                        y_pred_eval_udp_port = clf_udp_port.predict(udp_x_eval[feature_set_port])
+                        y_pred_eval_tcp_port = clf_tcp_port.predict(tcp_x_eval[feature_set_port])
+                    # y_pred_eval = np.concatenate((y_pred_eval_udp , y_pred_eval_tcp ))
+                    y_pred_eval = np.concatenate((y_pred_eval_udp | y_pred_eval_udp_port, y_pred_eval_tcp | y_pred_eval_tcp_port))
+                    eval_y = udp_eval_y.append(tcp_eval_y)
+                    eval_x = udp_x_eval.append(tcp_x_eval)
 
-                print("n_estimators:{:},m_samples:{:},contamination:{:}".format(num_estimators, m_samples,contamination))
-                print('Test')
-                temp_str = classification_report(y_true=eval_y, y_pred=y_pred_eval, target_names=['abnormal', 'normal'])
-                temp_list = temp_str.split()
-                iforest_record = iforest_record.append(
-                    pd.DataFrame({'contamination': contamination, 'm_samples': m_samples,
-                                  'num_estimators': num_estimators, 'anomaly_recall': temp_list[6],
-                                  'normal_recall': temp_list[11]}, index=[0]))
-                print(temp_str)
-                a = classification_report(y_true=eval_y, y_pred=y_pred_eval, target_names=['abnormal', 'normal'],
-                                          output_dict=True)
-                start_time=time.time()
-                
-                transfer_rule2(clf_tcp, './result/tcp_rule_' + device_name + '.csv')
-                transfer_rule2(clf_udp, './result/udp_rule_' + device_name + '.csv')
+                    print("n_estimators:{:},m_samples:{:},contamination:{:}".format(num_estimators, m_samples,contamination))
+                    print('Test')
+                    temp_str = classification_report(y_true=eval_y, y_pred=y_pred_eval, target_names=['abnormal', 'normal'])
+                    temp_list = temp_str.split()
+                    iforest_record = iforest_record.append(
+                        pd.DataFrame({'contamination_port': contamination_p, 'contamination': contamination, 'm_samples': m_samples,
+                                    'num_estimators': num_estimators, 'anomaly_recall': temp_list[6],
+                                    'normal_recall': temp_list[11]}, index=[0]))
+                    print(temp_str)
+                    a = classification_report(y_true=eval_y, y_pred=y_pred_eval, target_names=['abnormal', 'normal'],
+                                            output_dict=True)
+                    start_time=time.time()
+                    
+                    transfer_rule2(clf_tcp, './result/tcp_rule_' + device_name + '.csv')
+                    transfer_rule2(clf_udp, './result/udp_rule_' + device_name + '.csv')
 
-                transfer_rule_port(clf_tcp_port, './result/tcp_port_rule_' + device_name + '.csv')
-                transfer_rule_port(clf_udp_port, './result/udp_port_rule_' + device_name + '.csv')
-                print('transfer_rule time cost:',time.time()-start_time)
+                    transfer_rule_port(clf_tcp_port, './result/tcp_port_rule_' + device_name + '.csv')
+                    transfer_rule_port(clf_udp_port, './result/udp_port_rule_' + device_name + '.csv')
+                    print('transfer_rule time cost:',time.time()-start_time)
 
-                test_x = test(['all'], feature_set, df_eval)
+                    test_x = test(['all'], feature_set, df_eval)
 
-                print('accuracy',accuracy_score(test_x['pred'],y_pred_eval))
-                test_x[test_x['pred']!=y_pred_eval].to_csv('./result/wrong.csv')
-                temp_f1 = a['abnormal']['recall']
-                if (best_f1_score <= temp_f1):
-                    best_f1_score = temp_f1
-                    best_str = temp_str
-                    best_n = num_estimators
-                    best_m = m_samples
-                    best_return = a
-                    eval_x['test_y'] = eval_y
-                    eval_x['pred_y'] = y_pred_eval
-                    eval_x.to_csv('./result/test_pred_' + device_name + '.csv')
+                    print('accuracy',accuracy_score(test_x['pred'],y_pred_eval))
+                    test_x[test_x['pred']!=y_pred_eval].to_csv('./result/wrong.csv')
+                    temp_f1 = a['abnormal']['recall']
+                    if (best_f1_score <= temp_f1):
+                        best_f1_score = temp_f1
+                        best_str = temp_str
+                        best_n = num_estimators
+                        best_m = m_samples
+                        best_return = a
+                        eval_x['test_y'] = eval_y
+                        eval_x['pred_y'] = y_pred_eval
+                        eval_x.to_csv('./result/test_pred_' + device_name + '.csv')
 
     print("best n_estimators:{:},m_samples:{:}".format(best_n, best_m))
     print(best_str + '\n' + str(temp_f1))
@@ -453,15 +454,15 @@ def get_Anomaly_ID(df,threshold=0.95):#DateFrame
     return df44
 
 def filter(anomaly_df, control_all_pk_df):# anomaly_df which dedicate the anomaly in the first stage
-    filter_ = control_all_pk_df[control_all_pk_df[0].isin(anomaly_df["key"])]
+    filter_ = control_all_pk_df[control_all_pk_df[0].isin(anomaly_df["key"]) | control_all_pk_df[1].isin([0]) | control_all_pk_df[2].isin([0])] #arp upload to control plane to detect
     return filter_
 def pass_(anomaly_df, control_all_pk_df):# anomaly_df which dedicate the anomaly in the first stage
-    filter_ = control_all_pk_df[~control_all_pk_df[0].isin(anomaly_df["key"])]
+    filter_ = control_all_pk_df[~control_all_pk_df[0].isin(anomaly_df["key"]) & ~control_all_pk_df[1].isin([0]) & ~control_all_pk_df[2].isin([0])]
     return filter_
 def main(attack_name='all',device_list=['philips_camera'],thr_time=10,file_num=5):
     #hyper-parameter
     feature_set=['sum_len']
-    #
+    
     df_normal_test=pd.DataFrame()
     df_attack=load_iot_attack(attack_name,thr_time)
     df_attack_test, df_attack_eval = train_test_split(df_attack, test_size=0.2)
