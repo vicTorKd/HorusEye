@@ -9,7 +9,7 @@ from volksdep.converters import torch2trt
 from volksdep.datasets import CustomDataset
 
 from load_data import *
-from model import CNN_AE
+from model import CNN_AE_channel
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -32,6 +32,8 @@ setup_seed(20)
 
 
 def excute_RMSE(input, target):
+    input = torch.reshape(input, (-1,1,INPUT_SIZE))
+    target = torch.reshape(target, (-1,1,INPUT_SIZE))
     mse = (input - target).pow(2).sum(2) / INPUT_SIZE
     rmse = torch.sqrt(mse)
     return rmse.detach().cpu().numpy().reshape(-1)  # 0 :error 1:normal
@@ -43,7 +45,21 @@ def calibration_data_processing(data, data_num=100):
     np.random.shuffle(data)
     data = data[:data_num, ]
     data = scaler.fit_transform(data)
-    data = data[:, np.newaxis, :]
+    # data = data[:, np.newaxis, :]
+    data = np.pad(data, ((0,0),(3,0)), 'constant')
+    index = np.empty((0,0))
+    Port_index = np.arange(4,-1,-1).reshape(5,-1)
+    MIstat_index = np.arange(5,20).reshape(5,-1)
+    HHstat_index = np.arange(20,55).reshape(5,-1)
+    HHstat_jit_index = np.arange(55,70).reshape(5,-1)
+    HpHpstat_index = np.arange(70,105).reshape(5,-1)
+    for i in range(5):
+        index = np.append(index, Port_index[i])
+        index = np.append(index, MIstat_index[i])
+        index = np.append(index, HHstat_index[i])
+        index = np.append(index, HHstat_jit_index[i])
+        index = np.append(index, HpHpstat_index[i])
+    data = data[:, index.astype(np.int).tolist()].reshape(-1, 5, 21)
     data = torch.tensor(data, dtype=torch.float32)
     print(data.dtype)
     return data
@@ -83,27 +99,23 @@ def test_throughput(test_model, BATCH_SIZE, X):
 
 
 if __name__ == "__main__":
-    model_save_path = './params/CNN_DW_dilation.pkl'
-    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation.engine'
+    model_save_path = './params/CNN_DW_dilation_channel_port.pkl'
+    tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation_channel_port.engine'
     onnx_save_path = './params/onnx_model.onnx'
 
     # Hyper parameters
     CONVERT = True
-    # BATCH_SIZE = 40000  # for fp32/fp16 mode
-    BATCH_SIZE = 8600  # for int8 trt mode
-    INPUT_SIZE = 100
-    CALIBRATION_SIZE = 4000000
-    CHANNEL_SIZE = 1
+    BATCH_SIZE = 60000  # for int8 trt mode
+    INPUT_SIZE = 105
+    CHANNEL_SIZE = 5
     torch.cuda.set_device(0)
-    dummy_input = torch.ones(BATCH_SIZE, CHANNEL_SIZE, INPUT_SIZE).cuda()
+    dummy_input = torch.ones(BATCH_SIZE, CHANNEL_SIZE, int(INPUT_SIZE/CHANNEL_SIZE)).cuda()
     device_list_camera = ['philips_camera', '360_camera', 'ezviz_camera', 'hichip_battery_camera', 'mercury_wirecamera',
-                   'skyworth_camera', 'tplink_camera',
-                   'xiaomi_camera']  # ,'360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
-                                     # 'skyworth_camera','tplink_camera','xiaomi_camera'
-    device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway']
+                          'skyworth_camera', 'tplink_camera','xiaomi_camera']
+    device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway', 'linksys_router']
 
     if CONVERT:
-        model = CNN_AE(input_size=INPUT_SIZE)
+        model = CNN_AE_channel(input_size=INPUT_SIZE)
         if torch.cuda.is_available():
             model.cuda()
         print("model loading...")
@@ -158,6 +170,7 @@ if __name__ == "__main__":
                            # description of the trace being exported.
         print("model converted successfully")
         # save tensorrt engine
+        tensorrt_save_path = './params/tensorrt_int8_CNN_DW_dilation_channel_port' + str(BATCH_SIZE) + '.engine'
         save(trt_model, tensorrt_save_path)
     else:
         # load tensorrt engine
