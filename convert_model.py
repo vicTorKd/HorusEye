@@ -9,7 +9,7 @@ from volksdep.converters import torch2trt
 from volksdep.datasets import CustomDataset
 
 from load_data import *
-from model import CNN_AE_channel
+from model import Magnifier
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway', 'linksys_router']
 
     if CONVERT:
-        model = CNN_AE_channel(input_size=INPUT_SIZE)
+        model = Magnifier(input_size=INPUT_SIZE)
         if torch.cuda.is_available():
             model.cuda()
         print("model loading...")
