@@ -2,11 +2,8 @@ import random
 import numpy as np
 import pandas as pd
 import time
-# import Cython
-import copy
 from sklearn.model_selection import train_test_split
 import os
-from sklearn.preprocessing import Normalizer
 
 
 def file_name_walk(file_dir):
@@ -24,91 +21,8 @@ def dir_name_walk(file_dir):
             dir_list.append("{}/{}".format(root, dir))
     return dir_list
 
-def drop_dec_features(df):
-    drop_cols = ["srcPort", "dstPort", "protocol", 'srcIP', 'dstIP',
-                 "ip_ihl", "ip_tos", "ip_flags", "ip_ttl", "tcp_dataofs", "tcp_flag", "tcp_window",
-                 "udp_len",
-                 "length",
-                 'srcAddr1', 'srcAddr2', 'srcAddr3', 'srcAddr4', 'dstAddr1', 'dstAddr2', 'dstAddr3',
-                 'dstAddr4']
-    df.drop(drop_cols, axis=1, inplace=True)
-    return df
 
-
-def split_train_test(df, train_percent=0.8,bin=True):
-    drop_cols = ["srcPort", "dstPort", "protocol", 'srcIP', 'dstIP',
-                 "ip_ihl", "ip_tos", "ip_flags", "ip_ttl", "tcp_dataofs", "tcp_flag", "tcp_window",
-                 "udp_len",
-                 "length",
-                 'srcAddr1', 'srcAddr2', 'srcAddr3', 'srcAddr4', 'dstAddr1', 'dstAddr2', 'dstAddr3',
-                 'dstAddr4']
-    for col_names in ['srcAddr{}'.format(i) for i in range(1, 5)]:
-        df[col_names] = df[col_names].astype('str')
-    for col_names in ['dstAddr{}'.format(i) for i in range(1, 5)]:
-        df[col_names] = df[col_names].astype('str')
-    df['srcIP'] = df['srcAddr1'].str.cat([df['srcAddr2'], df['srcAddr3'], df['srcAddr4']], sep='.')
-    df['dstIP'] = df['dstAddr1'].str.cat([df['dstAddr2'], df['dstAddr3'], df['dstAddr4']], sep='.')
-    group = df.groupby(["srcIP", "srcPort", "dstIP", "dstPort", "protocol"])
-
-    # ngroups: the number of groups
-    total_index = np.arange(group.ngroups)
-    print('total flow number', len(total_index))
-    np.random.seed(1234)
-    np.random.shuffle(total_index)
-    split_index = int(len(total_index) * train_percent)
-    # ngroup(): Number each group from 0 to the number of groups - 1.
-    df_train = df[group.ngroup().isin(total_index[: split_index])]
-    df_test = df[group.ngroup().isin(total_index[split_index:])]
-    df_train.reset_index(drop=True, inplace=True)
-    df_test.reset_index(drop=True, inplace=True)
-    if bin:
-        df_train.drop(drop_cols, axis=1, inplace=True)
-        df_test.drop(drop_cols, axis=1, inplace=True)
-    else:
-        iot_feature_names = ["tcp_dataofs", "tcp_flag", "tcp_window","udp_len", "ip_ttl","srcPort", "dstPort", "protocol","ip_ihl", "ip_tos", "ip_flags","length", 'class']#
-
-        df_train = df_train[iot_feature_names]
-        df_test = df_test[iot_feature_names]
-
-
-
-    return df_train, df_test
-
-
-def get_bin_feature(df_total, feature_count):
-
-    port_col = []
-    for j in range(16):
-        port_col.append('srcPort-{}'.format(j))
-    for j in range(16):
-        port_col.append('dstPort-{}'.format(j))
-    flag_col = []
-    for j in range(8):
-        flag_col.append('ip_flags-{}'.format(j))
-    for j in range(8):
-        flag_col.append('tcp_flag-{}'.format(j))
-    if feature_count == 80:
-        df_total.drop(port_col, axis=1, inplace=True)
-        df_total.drop(flag_col, axis=1, inplace=True)
-    elif feature_count == 96:
-        df_total.drop(port_col, axis=1, inplace=True)
-    elif feature_count == 112:
-        df_total.drop(flag_col, axis=1, inplace=True)
-    elif feature_count == 120:
-        return df_total
-    return df_total
-def filter_loc_com(df,device_type='philips_camera'):
-
-    condition1 = np.array([df['srcAddr1'] == 192]) & np.array([df['srcAddr2'] == 168]) & np.array(
-        [df['srcAddr3'] == 1]) & np.array([df['dstAddr1'] == 192]) & np.array(
-        [df['dstAddr2'] == 168]) & np.array([df['dstAddr3'] == 1])
-    filter1 = (~condition1[0])
-    df = df[filter1]
-
-    df = df[df['dstAddr4'] != 255]
-    return df
-
-def load_iot_attack(attack_name='all',thr_time=10,skip=[]):
+def load_iot_attack(attack_name='all',thr_time=10):
     # load attack
     df_attack = pd.DataFrame()
     attack_path = './DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/'.format(thr_time)
@@ -117,8 +31,8 @@ def load_iot_attack(attack_name='all',thr_time=10,skip=[]):
     else: #load specfic attack
         attack_list = [attack_name]
     for type_index, type_name in enumerate(attack_list):
-        if type_name in skip:
-            continue
+        # if type_name in skip:
+        #     continue
         file_list = file_name_walk('./DataSets/Anomaly/attack-flow-level-device_{:}_dou_burst_14_add_pk/{:}'.format(thr_time,type_name))
         for i, file_path in enumerate(file_list):
             tmp_df = pd.read_csv(file_path)
