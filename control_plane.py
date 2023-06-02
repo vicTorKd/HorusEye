@@ -11,13 +11,19 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, classificati
 from thop import clever_format
 from thop import profile
 from torch import nn, optim
-from volksdep.converters import load
 import iForest_detect
 import Kitsune.KitNET as kit
 from load_data import *
-from model import Kitsune, CNN_AE_channel
+from model import Magnifier
 import warnings
 warnings.filterwarnings("ignore")
+
+import argparse
+parser = argparse.ArgumentParser(description='Select which experiment to run and whether to train.')
+parser.add_argument('--train', dest='train', type=str, default='False', help='Whether to train the model, \'True\' or \'False\'. Default is \'False\'.')
+parser.add_argument('--experiment', dest='experiment', type=str, default='A', help='Select which experiment to run, \'A\' is for experiment on our dataset; \'B\' is for experiment on public dataset; \'C\' is for experiment with INT8 model; \'D\' is for robust experiment, after performing robust experiment, retraining Gulliver Tunnel is required. Default is \'A\'.')
+parser.add_argument('--horuseye', dest='horuseye', type=str, default='True', help='Whether to use the full HorusEye framework, \'True\' is to use the full HorusEye framework (Magnifier + Gulliver Tunnel); \'False\' is only to use the Magnifier. Default is \'True\'.')
+args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
@@ -490,23 +496,49 @@ if __name__ == "__main__":
     TEST = True
     Use_filter = True
     Per_Attack=True
-    Test_Throughput=False
-    Poisoning = False
+    Test_Throughput=True
     PORT = True
     TWO_D = True
     BATCH_SIZE = 256
     TEST_BATCH_SIZE =60000  # for int8 trt model
     INPUTSIZE = 105
-    INT8 = False # using int8 model after quntization
+    INT8 = False  # using int8 model after quntization
+
+    if args.train == 'True':
+        TRAIN = True
+    elif args.train == 'False':
+        pass
+    else:
+        print('The train parameter is illegal, please check. Run without training by default. Use -h for more detailed instructions.')
+    if args.horuseye == 'True':
+        pass
+    elif args.horuseye == 'False':
+        Use_filter = False
+    else:
+        print('The horuseye parameter is illegal, please check. Run full HorueEye framework by default. Use -h for more detailed instructions.')
+    if args.experiment == 'A':
+        pass
+    elif args.experiment == 'B':
+        OPEN_SOURCE = True
+    elif args.experiment == 'C':
+        try:
+            from volksdep.converters import load
+            INT8 = True
+        except:
+            print('The volksdep library or TensorRT is misconfigured, please check. Run on non-INT8 mode by default. Use -h for more detailed instructions.')
+    elif args.experiment == 'D':
+        TEST = False
+        TEST_ROBUST = True
+    else:
+        print('The experiment parameter is illegal, please check. Run experiment A by default. Use -h for more detailed instructions.')
 
     if TWO_D:
         PORT = True
     if KITSUNE:
         PORT = False
         TWO_D = False
-        if Per_Attack:
-            Test_Throughput = False
-        # Use_filter = False
+        # if Per_Attack:
+        #     Test_Throughput = False
 
     # Pytorch model path
     if OPEN_SOURCE:
@@ -526,21 +558,21 @@ if __name__ == "__main__":
     #attack dataset path
     attack_path = './DataSets/Anomaly/attack_kitsune/'
 
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
     device_list_gateway = ['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway', 'linksys_router']
     device_list_camera = ['philips_camera', '360_camera', 'ezviz_camera', 'hichip_battery_camera', 'mercury_wirecamera',
                    'skyworth_camera', 'tplink_camera', 'xiaomi_camera']
 
     # model
     if not KITSUNE:
-        model = CNN_AE_channel(input_size=INPUTSIZE)
+        model = Magnifier(input_size=INPUTSIZE)
 
     # feature in data plane
     feature_set = ['pk_num', 'sum_len']
     if TRAIN or not Per_Attack:
         print('loading attack data...')
         df_attack = load_iot_attack_seq('all')
-        df_attack_test_data = load_iot_attack(attack_name='all', thr_time=1, skip=['http_ddos'])
+        df_attack_test_data = load_iot_attack(attack_name='all', thr_time=1)
         df_attack_eval_data = load_iot_attack(attack_name='http_ddos', thr_time=1)
         df_attack_test = iForest_detect.filter(df_attack_test_data, df_attack)
         df_attack_eval = iForest_detect.filter(df_attack_eval_data, df_attack)
@@ -634,13 +666,15 @@ if __name__ == "__main__":
             if Use_filter:
                 # data plane filter
                 df_test_with_pred = iForest_detect.test(['all'], feature_set, df_test_data)
+                before_filter_flow_num = len(pd.unique(df_test_with_pred['key']))
                 anomaly_df = iForest_detect.get_Anomaly_ID(df_test_with_pred, 0.95)
+                after_filter_flow_num = len(pd.unique(anomaly_df['key']))
                 # filt the control plane data
+                if after_filter_flow_num != 0:
+                    print('Flow Gain Ratio', before_filter_flow_num / after_filter_flow_num)
+
                 after_filer_test = iForest_detect.filter(anomaly_df, df_test_con)
                 pass_data = iForest_detect.pass_(anomaly_df, df_test_con)
-                print("pass:{}\ninspection:{}\ncoefficient:{}".format(pass_data.shape[0],
-                                after_filer_test.shape[0], df_normal_test_con.shape[0]*1.0/after_filer_test.shape[0]))
-                print("abnormal:{}".format(df_attack_test.shape[0]))
             else:
                 after_filer_test = df_test_con
             if not PORT:
@@ -769,7 +803,8 @@ if __name__ == "__main__":
                 record_attack.to_csv('./result/Kitsune/record_attack.csv')
 
     if TEST_ROBUST:
-        Poisoning_ratio = 0.01
+        Poisoning_ratio = [0.01, 0.02, 0.1]
+        robust_list = ['mix','low_rate','poisoning_0','poisoning_1','poisoning_2']
         print('loading attack data...')
         df_attack_eval_data = load_iot_attack(attack_name='http_ddos', thr_time=1)
         print('loading training data...')
@@ -777,32 +812,27 @@ if __name__ == "__main__":
         df_normal_train_data = df_normal_train_data.append(load_iot_data(device_list=device_list_gateway, thr_time=1, begin=0, end=4))
         df_normal_train, df_normal_eval = train_test_split(df_normal_train_data, test_size=0.2, random_state=20)
         print(df_normal_train.shape)
-        if Poisoning:
-            df_attack_poisoning_data = load_iot_attack(attack_name='mirai_router_filter', thr_time=1)
-            poisoning_size = len(df_attack_poisoning_data)
-            target_size = int(len(df_normal_train)*Poisoning_ratio)
-            while poisoning_size < target_size:
-                df_attack_poisoning_data = df_attack_poisoning_data.append(df_attack_poisoning_data.iloc[:min((target_size-poisoning_size),len(df_attack_poisoning_data))])
-                poisoning_size = len(df_attack_poisoning_data)
-            print(df_attack_poisoning_data.shape)
-            df_normal_train = df_normal_train.append(df_attack_poisoning_data)
-            iForest_detect.train('all', feature_set, df_normal_train, df_normal_eval, df_attack_eval_data)
-        if Poisoning:
-            robust_list = ['poisoning']
-        else:
-            robust_list = ['mix']
         for robust_type in robust_list:
+            print('******************', robust_type, '******************')
             df_robust_result=pd.DataFrame()
-            if robust_type == 'poisoning':
-                robust_result_path='./result/df_robust_result_' + robust_type + '_' + str(Poisoning_ratio) + '.csv'
+            if robust_type.startswith('poisoning'):
+                ratio = Poisoning_ratio[robust_type.split('_')[1]]
+                df_attack_poisoning_data = load_iot_attack(attack_name='mirai_router_filter', thr_time=1)
+                poisoning_size = len(df_attack_poisoning_data)
+                target_size = int(len(df_normal_train)*ratio)
+                while poisoning_size < target_size:
+                    df_attack_poisoning_data = df_attack_poisoning_data.append(df_attack_poisoning_data.iloc[:min((target_size-poisoning_size),len(df_attack_poisoning_data))])
+                    poisoning_size = len(df_attack_poisoning_data)
+                print(df_attack_poisoning_data.shape)
+                df_normal_train = df_normal_train.append(df_attack_poisoning_data)
+                iForest_detect.train('all', feature_set, df_normal_train, df_normal_eval, df_attack_eval_data)
+                robust_result_path='./result/df_robust_result_' + robust_type + '_' + str(ratio) + '.csv'
                 robust_attack_path='./DataSets/Anomaly/attack-flow-level-device_1_dou_burst_14_add_pk/mirai_router_filter'
             else:
                 robust_result_path='./result/df_robust_result_' + robust_type + '.csv'
                 robust_attack_path='./DataSets/robust/{}/attack-flow-level-device_1_dou_burst_14_add_pk'.format(robust_type)
             attack_list=os.listdir(robust_attack_path)
             for attack_path in attack_list:
-                if '.csv.csv' in attack_path:
-                    continue
                 print('------------------', attack_path, '------------------')
                 df_attack_robust = pd.read_csv(robust_attack_path+'/'+attack_path)
                 df_attack_robust['class'] = -1
@@ -828,5 +858,3 @@ if __name__ == "__main__":
                     index=[0])], axis=0)
             df_robust_result.to_csv(robust_result_path)
 
-    # test the rule
-    # df_test_with_pred = test(device_list, feature_set, df_test)
