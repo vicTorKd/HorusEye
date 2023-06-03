@@ -18,9 +18,10 @@ The ever growing volume of IoT traffic brings challenges to IoT anomaly detectio
 ## Usage:  
 
 ### Feature extraction
-Due to privacy concerns, our raw pcap files will be processed and uploaded after the article is accepted. Partial data set(used in the article experiment) can be downloaded at    
-<https://drive.google.com/u/0/uc?id=16JFRl3XEPSDnZdgAeMtQ1NZ2x5u91aeO&export=download>.   
-(The compressed file needs to be extracted in project folder)
+The extracted data set (used in the article experiment) can be downloaded at
+<https://drive.google.com/u/0/uc?id=1N5F_CuHCmMIes0ox_tnzvr3t9yGtItLS&export=download>
+(The compressed file needs to be extracted under the project folder).
+Also, we can download the original Pcap file at <https://drive.google.com/u/0/uc?id=191CmJYWszlSmIitfid2J53UMYtiaqhhe&export=download> and re-do the feature extraction.
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order:
     - pcap2csv_attack.py
     - csv_process_attack.py
