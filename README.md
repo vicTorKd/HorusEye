@@ -8,6 +8,14 @@ the anomalies considered by Gulliver Tunnel to reduce the false-positive rate. I
 ### Environments install
 1.  install TensorRT-8.2.1.8 (optional)   
 2.  conda env create -f iot.yaml
+
+## Project Structure
+- control_plane.py is main program, where you can change your hyper-parameter and train and test the framework.  
+- iForest_detect.py is Gulliver Tunnel module which achives traffic offloading using isolation forest. Also you can change the hyper-parameter for iForest.  
+- load_data.py is called by control_plane.py to load data from file.  
+- convert_model.py is model quantization module, which can convert the trained model in pytorch into tensorRT engine. (GPU is required)
+
+
 ## Usage:  
 
 ### Feature extraction
@@ -22,8 +30,17 @@ Due to privacy concerns, our raw pcap files will be processed and uploaded after
 
 
 ### Training and testing
-- control_plane.py is main program, where you can change your hyper-parameter and train and test the framework.  
-- iForest_detect.py is Gulliver Tunnel module which achives traffic offloading using isolation forest. Also you can change the hyper-parameter for iForest.  
-- load_data.py is called by control_plane.py to load data from file.  
-- convert_model.py is model quantization module, which can convert the trained model in pytorch into tensorRT engine. (GPU is required)
+usage: control_plane_test.py [-h] [--train TRAIN] [--experiment EXPERIMENT] [--horuseye HORUSEYE]
+
+Select which experiment to run and whether to train.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --train TRAIN         Whether to train the model, 'True' or 'False'. Default is 'False'.
+  --experiment EXPERIMENT
+                        Select which experiment to run, 'A' is for experiment on our dataset, 'B' is for experiment on public dataset, 'C' is for experiment with INT8 model, 'D' is for robust experiment, after
+                        performing robust experiment, retraining is required. Default is 'A'.
+  --horuseye HORUSEYE   Whether to use the full HorusEye framework, 'True' is to use the full HorusEye framework (Magnifier + Gulliver Tunnel); 'False' is only to use the Magnifier. Default is 'True'.
+  
+ **In addition, you can do more customization by manually setting the hyperparameters in control_plane.py.**
 
