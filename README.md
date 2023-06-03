@@ -30,7 +30,7 @@ Also, we can download the original Pcap file at <https://drive.google.com/u/0/uc
 
 
 ### Training and testing
-![image](https://github.com/vicTorKd/HorusEye/assets/81010941/5fdb402a-d8b8-4511-8d5e-6a34925f87ea)
+![image](https://github.com/vicTorKd/HorusEye/assets/81010941/cf9c2e02-ae37-49dd-8fd1-0ec18659fc20)
   
  **In addition, you can do more customization by manually setting the hyperparameters in control_plane.py.**
 
