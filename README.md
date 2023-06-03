@@ -30,17 +30,7 @@ Due to privacy concerns, our raw pcap files will be processed and uploaded after
 
 
 ### Training and testing
-usage: control_plane_test.py [-h] [--train TRAIN] [--experiment EXPERIMENT] [--horuseye HORUSEYE]
-
-Select which experiment to run and whether to train.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --train TRAIN         Whether to train the model, 'True' or 'False'. Default is 'False'.
-  --experiment EXPERIMENT
-                        Select which experiment to run, 'A' is for experiment on our dataset, 'B' is for experiment on public dataset, 'C' is for experiment with INT8 model, 'D' is for robust experiment, after
-                        performing robust experiment, retraining is required. Default is 'A'.
-  --horuseye HORUSEYE   Whether to use the full HorusEye framework, 'True' is to use the full HorusEye framework (Magnifier + Gulliver Tunnel); 'False' is only to use the Magnifier. Default is 'True'.
+![image](https://github.com/vicTorKd/HorusEye/assets/81010941/5fdb402a-d8b8-4511-8d5e-6a34925f87ea)
   
  **In addition, you can do more customization by manually setting the hyperparameters in control_plane.py.**
 
