@@ -5,7 +5,7 @@ The ever growing volume of IoT traffic brings challenges to IoT anomaly detectio
 
 ## Install
 ### Environments install
-1.  (optional) install TensorRT-8.2.1.8 and its satellite packages (graphsurgeon, uff) at <https://developer.nvidia.com/compute/machine-learning/tensorrt/secure/8.2.1/tars/tensorrt-8.2.1.8.linux.x86_64-gnu.cuda-11.4.cudnn8.2.tar.gz>, and install Volksdep at <https://github.com/Media-Smart/volksdep>
+1.  (optional) install TensorRT-8.2.1.8 and relevent packages (graphsurgeon, uff) at <https://developer.nvidia.com/compute/machine-learning/tensorrt/secure/8.2.1/tars/tensorrt-8.2.1.8.linux.x86_64-gnu.cuda-11.4.cudnn8.2.tar.gz>, and install Volksdep at <https://github.com/Media-Smart/volksdep>
 2.  conda env create -f iot.yaml
 
 ## Project Structure
