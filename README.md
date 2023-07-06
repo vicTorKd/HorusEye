@@ -26,7 +26,8 @@ Also, we can download the original Pcap file at <https://drive.google.com/u/0/uc
     - python3 pcap2csv_attack.py
     - python3 csv_process_attack.py
     - python3 extract_flow_size.py
-2.  For flow level feature extraction, run FE.py.  
+2.  For flow level feature extraction, run FE.py.
+    - python3 FE.py
 
 
 ### Training and testing
