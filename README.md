@@ -103,7 +103,25 @@ For example:
     
       2. python3 pcap2csv_attack.py
     
-      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py 
+      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py
+            58,60c58,60
+            <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+            <     normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            <     # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
+            ---
+            >     # normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+            >     # normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            >     normal_list=os.listdir('../DataSets/Pcap/Anomaly/')
+            62,65c62,65
+            <         # file_list = file_name_walk('../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name))
+            <         # save_root = '../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name)
+            <         file_list = file_name_walk('../DataSets/normal-packet-level-device/{:}'.format(type_name))
+            <         save_root = '../DataSets/normal-dec-feature-device/{}'.format(type_name)
+            ---
+            >         file_list = file_name_walk('../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name))
+            >         save_root = '../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name)
+            >         # file_list = file_name_walk('../DataSets/normal-packet-level-device/{:}'.format(type_name))
+            >         # save_root = '../DataSets/normal-dec-feature-device/{}'.format(type_name)
             97c97
             <     # main()
             ---
@@ -115,7 +133,25 @@ For example:
     
       4. python3 csv_process_attack.py
     
-      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py 
+      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py  
+            239,241c239,241
+            <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+            <     normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            <     # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
+            ---
+            >     # normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
+            >     # normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            >     normal_list=os.listdir('../DataSets/Pcap/Anomaly/')
+            250,253c250,253
+            <         # file_list = file_name_walk('../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name))
+            <         # save_root = '../DataSets/Anomaly/attack-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
+            <         file_list = file_name_walk('../DataSets/normal-dec-feature-device/{}'.format(type_name))
+            <         save_root = '../DataSets/normal-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
+            ---
+            >         file_list = file_name_walk('../DataSets/Anomaly/attack-dec-feature-device/{}'.format(type_name))
+            >         save_root = '../DataSets/Anomaly/attack-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
+            >         # file_list = file_name_walk('../DataSets/normal-dec-feature-device/{}'.format(type_name))
+            >         # save_root = '../DataSets/normal-flow-level-device_{}_dou_burst_{}_add_pk/{}'.format(str(thr_time),pk_thr,type_name)
             288,289c288,289
             < # main()
             < roubust_process()
