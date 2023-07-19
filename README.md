@@ -71,6 +71,14 @@ For example:
 
       6. python3 extract_flow_size.py
 
+      7. diff ./FE.py ./FE_copy.py                              
+            349c349
+            <         file_list = file_name_walk('./DataSets/Normal/data/{:}'.format(type_name))
+            ---
+            >         file_list = file_name_walk('./DataSets/Pcap/Normal/{:}'.format(type_name))
+
+      8. python3 FE.py
+
 - To perform feature extraction for anomaly data:
   
       1. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py      
@@ -160,6 +168,30 @@ For example:
             > # roubust_process()
     
       6. python3 extract_flow_size.py
+
+      7. diff ./FE.py ./FE_copy.py
+            342,345c342,345
+            <     # normal_list = os.listdir('./DataSets/Attack_iot_filter/Pcap/')
+            <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
+            <                    'skyworth_camera','tplink_camera','xiaomi_camera','aqara_gateway','gree_gateway','ihorn_gateway',
+            <                    'tcl_gateway','xiaomi_gateway']
+            ---
+            >     normal_list = os.listdir('./DataSets/Pcap/Anomaly/')
+            >     # normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
+            >     #                'skyworth_camera','tplink_camera','xiaomi_camera','aqara_gateway','gree_gateway','ihorn_gateway',
+            >     #                'tcl_gateway','xiaomi_gateway']
+            347,350c347,350
+            <         # file_list = file_name_walk('./DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
+            <         # save_root = './DataSets/Anomaly/attack_kitsune/{}'.format(type_name)
+            <         file_list = file_name_walk('./DataSets/Normal/data/{:}'.format(type_name))
+            <         save_root = './DataSets/normal-kitsune_test/{}'.format(type_name)
+            ---
+            >         file_list = file_name_walk('./DataSets/Pcap/Anomaly/{:}'.format(type_name))
+            >         save_root = './DataSets/Anomaly/attack_kitsune/{}'.format(type_name)
+            >         # file_list = file_name_walk('./DataSets/Pcap/Normal/{:}'.format(type_name))
+            >         # save_root = './DataSets/normal-kitsune_test/{}'.format(type_name)
+
+      8. python3 FE.py
       
 
 ### Training and testing
