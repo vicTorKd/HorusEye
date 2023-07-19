@@ -31,6 +31,100 @@ Also, we can download the original Pcap file at <https://drive.google.com/u/0/uc
 
 
 For example:
+- To perform feature extraction for normal data:
+  
+      1. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py 
+            174c174
+            <         file_list = file_name_walk('../DataSets/Normal/data/{:}'.format(type_name))
+            ---
+            >         file_list = file_name_walk('../DataSets/Pcap/Normal/{:}'.format(type_name))
+            209c209
+            <     # main()
+            ---
+            >     main()
+            211c211
+            <     roubust_process()
+            ---
+            >     # roubust_process()
+
+      2. python3 pcap2csv_attack.py
+
+      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py 
+            97c97
+            <     # main()
+            ---
+            >     main()
+            99c99
+            <     roubust_process()
+            ---
+            >     # roubust_process()
+  
+      4. python3 csv_process_attack.py
+
+      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py 
+            288,289c288,289
+            < # main()
+            < roubust_process()
+            ---
+            > main()
+            > # roubust_process()
+
+      6. python3 extract_flow_size.py
+
+- To perform feature extraction for anomaly data:
+  
+      1. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py      
+            168,170c168,170
+            <     # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
+            <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']
+            <     normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            ---
+            >     normal_list=os.listdir('../DataSets/Pcap/Anomaly/')
+            >     # normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']
+            >     # normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
+            172,175c172,175
+            <         # file_list = file_name_walk('../DataSets/Attack_iot_filter/Pcap/{:}'.format(type_name))
+            <         # save_root = '../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name)
+            <         file_list = file_name_walk('../DataSets/Normal/data/{:}'.format(type_name))
+            <         save_root = '../DataSets/normal-packet-level-device/{}'.format(type_name)
+            ---
+            >         file_list = file_name_walk('../DataSets/Pcap/Anomaly/{:}'.format(type_name))
+            >         save_root = '../DataSets/Anomaly/attack-packet-level-device/{}'.format(type_name)
+            >         # file_list = file_name_walk('../DataSets/Pcap/Normal/{:}'.format(type_name))
+            >         # save_root = '../DataSets/normal-packet-level-device/{}'.format(type_name)
+            209c209
+            <     # main()
+            ---
+            >     main()
+            211c211
+            <     roubust_process()
+            ---
+            >     # roubust_process()
+    
+      2. python3 pcap2csv_attack.py
+    
+      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py 
+            97c97
+            <     # main()
+            ---
+            >     main()
+            99c99
+            <     roubust_process()
+            ---
+            >     # roubust_process()
+    
+      4. python3 csv_process_attack.py
+    
+      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py 
+            288,289c288,289
+            < # main()
+            < roubust_process()
+            ---
+            > main()
+            > # roubust_process()
+    
+      6. python3 extract_flow_size.py
+      
 
 ### Training and testing
 ![image](https://github.com/vicTorKd/HorusEye/assets/81010941/cf9c2e02-ae37-49dd-8fd1-0ec18659fc20)
