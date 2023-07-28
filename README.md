@@ -25,17 +25,21 @@ Also, we can download the original Pcap file at <https://drive.google.com/u/0/uc
 
 
 1.  For burst level feature extraction, in pcap_process packet, python files should be executed in following order (You need to manually change the datasets path in .py files):
+    - cd pcap_process
     - python3 pcap2csv_attack.py
     - python3 csv_process_attack.py
     - python3 extract_flow_size.py
-2.  For flow level feature extraction, run FE.py.
+3.  For flow level feature extraction, run FE.py.
+    - cd HorusEye
     - python3 FE.py
 
 
 For example:
 - To perform feature extraction for normal data:
   
-      1. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py 
+      1. cd pcap_process
+  
+      2. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py 
             174c174
             <         file_list = file_name_walk('../DataSets/Normal/data/{:}'.format(type_name))
             ---
@@ -49,9 +53,9 @@ For example:
             ---
             >     # roubust_process()
 
-      2. python3 pcap2csv_attack.py
+      3. python3 pcap2csv_attack.py
 
-      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py 
+      4. diff ./csv_process_attack.py ./csv_process_attack_copy.py 
             97c97
             <     # main()
             ---
@@ -61,9 +65,9 @@ For example:
             ---
             >     # roubust_process()
   
-      4. python3 csv_process_attack.py
+      5. python3 csv_process_attack.py
 
-      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py 
+      6. diff ./extract_flow_size.py ./extract_flow_size_copy.py 
             288,289c288,289
             < # main()
             < roubust_process()
@@ -71,19 +75,23 @@ For example:
             > main()
             > # roubust_process()
 
-      6. python3 extract_flow_size.py
+      7. python3 extract_flow_size.py
 
-      7. diff ./FE.py ./FE_copy.py                              
+      8. diff ./FE.py ./FE_copy.py                              
             349c349
             <         file_list = file_name_walk('./DataSets/Normal/data/{:}'.format(type_name))
             ---
             >         file_list = file_name_walk('./DataSets/Pcap/Normal/{:}'.format(type_name))
 
-      8. python3 FE.py
+      9. cd HorusEye
+  
+      10. python3 FE.py
 
 - To perform feature extraction for anomaly data:
   
-      1. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py      
+      1. cd pcap_process
+
+      2. diff ./pcap2csv_attack.py ./pcap2csv_attack_copy.py      
             168,170c168,170
             <     # normal_list=os.listdir('../DataSets/Attack_iot_filter/Pcap/')
             <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']
@@ -111,9 +119,9 @@ For example:
             ---
             >     # roubust_process()
     
-      2. python3 pcap2csv_attack.py
+      3. python3 pcap2csv_attack.py
     
-      3. diff ./csv_process_attack.py ./csv_process_attack_copy.py
+      4. diff ./csv_process_attack.py ./csv_process_attack_copy.py
             58,60c58,60
             <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
             <     normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
@@ -141,9 +149,9 @@ For example:
             ---
             >     # roubust_process()
     
-      4. python3 csv_process_attack.py
+      5. python3 csv_process_attack.py
     
-      5. diff ./extract_flow_size.py ./extract_flow_size_copy.py  
+      6. diff ./extract_flow_size.py ./extract_flow_size_copy.py  
             239,241c239,241
             <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera']#'philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera','skyworth_camera','tplink_camera','xiaomi_camera'
             <     normal_list.extend(['aqara_gateway', 'gree_gateway', 'ihorn_gateway', 'tcl_gateway', 'xiaomi_gateway'])
@@ -169,9 +177,9 @@ For example:
             > main()
             > # roubust_process()
     
-      6. python3 extract_flow_size.py
+      7. python3 extract_flow_size.py
 
-      7. diff ./FE.py ./FE_copy.py
+      8. diff ./FE.py ./FE_copy.py
             342,345c342,345
             <     # normal_list = os.listdir('./DataSets/Attack_iot_filter/Pcap/')
             <     normal_list = ['philips_camera','360_camera','ezviz_camera','hichip_battery_camera','mercury_wirecamera',
@@ -193,7 +201,9 @@ For example:
             >         # file_list = file_name_walk('./DataSets/Pcap/Normal/{:}'.format(type_name))
             >         # save_root = './DataSets/normal-kitsune_test/{}'.format(type_name)
 
-      8. python3 FE.py
+      9. cd HorusEye
+  
+      10. python3 FE.py
       
 
 ### Training and testing
