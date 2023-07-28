@@ -30,7 +30,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 if not os.path.exists('./params/'):
     os.makedirs('./params/')
 if not os.path.exists('./result/'):
-    os.makedirs('./result/')
+    os.makedirs('./result/HorusEye')
+    os.makedirs('./result/rmse')
+    os.makedirs('./result/Magnifier')
+    os.makedirs('./result/Kitsune')
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -690,7 +693,7 @@ if __name__ == "__main__":
                 # load AE checkpoints
                 # it will add new key in training profile phase, causing to calculate the FLOPs and MACs.
                 # and we drop this key by setting the strict to False
-                model.load_state_dict(torch.load(model_save_path), strict=False)
+                model.load_state_dict(torch.load(model_save_path,map_location='cuda:0'), strict=False)
 
                 # load TensorRT model
                 if INT8:
